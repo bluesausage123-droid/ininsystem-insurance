@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>家庭責任與壽險缺口精算系統</title>
+    
+    <script>
+        (function() {
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            var isLine = (ua.indexOf('Line') > -1);
+            var isFB = (ua.indexOf('FBAN') > -1 || ua.indexOf('FBAV') > -1);
+            var isIG = (ua.indexOf('Instagram') > -1);
+
+            // 1. 如果是 LINE，嘗試使用隱藏參數強制喚醒外部瀏覽器
+            if (isLine) {
+                if (window.location.search.indexOf('openExternalBrowser=1') === -1) {
+                    var separator = window.location.search ? '&' : '?';
+                    window.location.href = window.location.href + separator + 'openExternalBrowser=1';
+                }
+            }
+
+            // 2. 如果仍在社群瀏覽器內 (跳轉失敗，或是 FB/IG)，則顯示強制引導遮罩
+            if (isLine || isFB || isIG) {
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById('in-app-warning').style.display = 'flex';
+                });
+            }
+        })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: "Microsoft JhengHei", -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f8f9fa; color: #374151; }
+        .card-container { position: relative; width: 100%; height: 92vh; height: calc(100dvh - env(safe-area-inset-bottom) - 30px); min-height: 680px; margin-top: 15px; }
+        input[type="text"], input[type="number"], input[type="tel"], input[type="email"], select { font-size: 16px !important; }
+        
+        .card { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.4s ease-out; background: white; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; border-top: 5px solid #3b82f6; }
+        .card.active { opacity: 1; visibility: visible; transform: translateY(0); z-index: 10; }
+        .card-content { padding: 1.5rem; overflow-y: auto; flex-grow: 1; scroll-behavior: smooth; }
+        
+        .input-error { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        .error-msg { color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none; }
+        .progress-bar { transition: width 0.5s ease; }
+        
+        .chk-btn { display: inline-block; padding: 8px 16px; margin: 4px; border: 1px solid #d1d5db; border-radius: 20px; font-size: 14px; cursor: pointer; transition: all 0.2s; color: #4b5563; background: #fff; }
+        input[type="checkbox"].hidden-chk:checked + .chk-btn, input[type="radio"].hidden-rad:checked + .chk-btn { background-color: #eff6ff; border-color: #3b82f6; color: #1d4ed8; font-weight: bold; box-shadow: 0 2px 4px rgba(59,130,246,0.2); }
+        input[type="checkbox"].hidden-chk, input[type="radio"].hidden-rad { display: none; }
+
+        .risk-card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; display: flex; flex-direction: column; padding: 12px; margin-bottom: 12px;}
+        .risk-hdr { font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: #1f2937; border-bottom: 1px dashed #e5e7eb; padding-bottom: 6px; }
+        .risk-stats { font-size: 12px; color: #4b5563; margin-bottom: 6px; line-height: 1.6; }
+        .risk-bar-bg { width: 100%; height: 8px; background: #f3f4f6; border-radius: 4px; margin-bottom: 8px; overflow: hidden; }
+        .risk-bar-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease-out; background-color: #3b82f6; }
+        .risk-gap { padding: 8px; border-radius: 6px; font-weight: bold; font-size: 13px; text-align: center; }
+        .gap-red { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .gap-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+        .chart-box { width: 100%; max-width: 100%; height: 260px !important; min-height: 260px !important; max-height: 260px !important; position: relative; margin: 0 auto; }
+        
+        #pdf-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; background: #ffffff; z-index: 99999; padding: 20px 0; }
+        #pdf-template { width: 210mm; height: 294mm; max-height: 294mm; background-color: #ffffff; padding: 12mm 16mm; color: #000; font-family: "Microsoft JhengHei", sans-serif; box-sizing: border-box; margin: 0 auto; overflow: hidden; display: flex; flex-direction: column; }
+        .pdf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; flex-grow: 1; }
+        
+        #report-content { scroll-behavior: smooth; }
+
+        .pdf-header { border-bottom: 3px double #bfdbfe; padding-bottom: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .pdf-title h1 { font-size: 28px; font-weight: 900; color: #1e3a8a; letter-spacing: 2px; margin: 0; text-shadow: 1px 1px 0px rgba(0,0,0,0.05); }
+        .pdf-title p { background-color: #eff6ff; color: #1d4ed8; font-size: 11px; margin-top: 6px; font-weight: bold; letter-spacing: 3px; padding: 4px 10px; border-radius: 12px; display: inline-block; border: 1px solid #bfdbfe; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <div id="in-app-warning" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-[9999999] hidden flex-col items-center pt-16 px-6 text-center">
+        <div class="animate-bounce mb-4 text-white text-4xl flex justify-end w-full pr-4">
+            <i class="fas fa-arrow-up"></i>
+        </div>
+        <i class="fas fa-exclamation-triangle text-yellow-400 text-6xl mb-6"></i>
+        <h2 class="text-2xl font-bold text-white mb-4">請使用外部瀏覽器開啟</h2>
+        <p class="text-base text-gray-300 mb-6 leading-relaxed">
+            您目前使用的是 LINE 或臉書的內建瀏覽器，<strong class="text-yellow-400">系統將無法正常為您下載 PDF 報告！</strong>
+        </p>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700 text-left w-full max-w-sm shadow-lg">
+            <p class="text-white font-bold mb-3 text-lg border-b border-gray-600 pb-2">👉 解除步驟：</p>
+            <p class="text-gray-300 text-base mb-2">1. 點擊畫面右上角的 <i class="fas fa-ellipsis-h mx-1 text-white"></i> 或 <i class="fas fa-external-link-alt mx-1 text-white"></i></p>
+            <p class="text-gray-300 text-base">2. 選擇 <strong class="text-blue-400">「以預設瀏覽器開啟」</strong><br><span class="ml-4 text-sm text-gray-400">(Safari 或 Chrome)</span></p>
+        </div>
+    </div>
+
+    <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[99999] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform transition-all">
+            <h3 class="text-lg font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">【個資蒐集與使用聲明】</h3>
+            <div class="text-sm text-gray-700 space-y-3 leading-relaxed">
+                <p>您輸入的姓名、電話、Line ID 等個人資訊僅供本系統診斷試算及後續專屬顧問聯繫使用。</p>
+                <p>本系統承諾妥善保管您的資料，絕不外洩或作其他用途，確保您的隱私安全。</p>
+            </div>
+            <button onclick="document.getElementById('privacy-modal').style.display='none'" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition">
+                我已充分瞭解
+            </button>
+        </div>
+    </div>
+
+    <div id="contact-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[99999] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-8 shadow-2xl transform transition-all relative text-center border-t-8 border-[#00B900]">
+            <button onclick="document.getElementById('contact-modal').style.display='none'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl outline-none">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <h2 class="text-2xl font-black text-gray-800 mb-2">專屬顧問一對一解析</h2>
+            <p class="text-sm text-gray-500 mb-6 font-bold">為您找出報告中隱藏的理賠空間！</p>
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-6 w-full shadow-inner mx-auto">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://line.me/R/ti/p/@704bzjfq" class="w-48 h-48 mx-auto rounded-xl">
+                <p class="text-gray-700 mt-4 font-bold tracking-wide text-sm">LINE ID: 茵joy｜理財</p>
+            </div>
+            <a href="https://line.me/R/ti/p/@704bzjfq" class="w-full bg-[#00B900] hover:bg-[#00a000] text-white font-bold py-4 rounded-xl shadow-lg transition flex justify-center items-center text-lg">
+                <i class="fab fa-line text-2xl mr-2"></i> 立即加 LINE 預約
+            </a>
+        </div>
+    </div>
+
+    <div class="w-full bg-blue-100 h-2 fixed top-0 z-50"><div id="progress" class="bg-blue-600 h-2 w-0 progress-bar"></div></div>
+
+    <div class="flex-grow flex items-center justify-center p-4">
+        <div class="w-full max-w-md card-container">
+            
+            <div id="step-0" class="card active">
+                <div class="card-content flex flex-col justify-center text-center">
+                    <div class="mb-6 text-blue-600"><i class="fas fa-home text-6xl animate-bounce-slow"></i></div>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-3">家庭責任與壽險缺口精算</h1>
+                    <div class="bg-blue-50 p-6 rounded-2xl mb-6 text-left border border-blue-100 shadow-sm">
+                        <p class="text-blue-800 mb-2 font-bold"><i class="fas fa-question-circle"></i> 如果有一天突然不在了...</p>
+                        <p class="text-gray-600 text-sm leading-relaxed mb-2">
+                            您的家人可以維持現在的生活多久？
+                        </p>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            本系統將透過生活費、貸款、通膨率與教育基金的大數據精算，幫您找出真實的「家庭防護缺口」。
+                        </p>
+                    </div>
+                    <button onclick="nextStep(1)" class="w-full mt-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition">開始精算測驗 <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+            </div>
+
+            <div id="step-1" class="card">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-blue-100 pb-2"><i class="fas fa-user text-blue-600 mr-2"></i> 1. 基本資料</h2>
+                    <div class="space-y-4 flex-grow overflow-y-auto pr-2">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">姓名 <span class="text-red-500">*</span></label>
+                            <input type="text" id="user-name" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500" placeholder="例如：許茵茵">
+                            <p id="err-name" class="error-msg"><i class="fas fa-exclamation-circle"></i> 請填寫姓名</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <div class="w-1/2">
+                                <label class="block text-sm font-bold text-gray-700 mb-1">年齡 <span class="text-red-500">*</span></label>
+                                <input type="number" id="user-age" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500" placeholder="例如：35">
+                                <p id="err-age" class="error-msg"><i class="fas fa-exclamation-circle"></i> 必填</p>
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-sm font-bold text-gray-700 mb-1">婚姻 <span class="text-red-500">*</span></label>
+                                <select id="user-marriage" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+                                    <option value="" disabled selected hidden>請選擇</option>
+                                    <option value="已婚">已婚</option>
+                                    <option value="未婚">未婚</option>
+                                </select>
+                                <p id="err-marriage" class="error-msg"><i class="fas fa-exclamation-circle"></i> 必選</p>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">居住地 (計算教育基金基數) <span class="text-red-500">*</span></label>
+                            <select id="user-region" onchange="toggleOverseas()" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+                                <option value="" disabled selected hidden>請選擇居住縣市...</option>
+                                <option value="台北市">台北市</option><option value="新北市">新北市</option><option value="桃園市">桃園市</option><option value="台中市">台中市</option><option value="台南市">台南市</option><option value="高雄市">高雄市</option><option value="新竹市">新竹市</option><option value="新竹縣">新竹縣</option>
+                                <option value="基隆市">基隆市</option><option value="苗栗縣">苗栗縣</option><option value="彰化縣">彰化縣</option><option value="南投縣">南投縣</option><option value="雲林縣">雲林縣</option><option value="嘉義市">嘉義市</option><option value="嘉義縣">嘉義縣</option><option value="屏東縣">屏東縣</option><option value="宜蘭縣">宜蘭縣</option><option value="花蓮縣">花蓮縣</option><option value="台東縣">台東縣</option><option value="外島地區">外島地區</option>
+                                <option value="海外">海外 / 旅居國外</option>
+                            </select>
+                            <p id="err-region" class="error-msg"><i class="fas fa-exclamation-circle"></i> 請選擇居住地</p>
+                            <input type="number" id="custom-edu-cost" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 mt-2 border-2 border-blue-400 rounded-lg hidden outline-none" placeholder="請自行預估單一小孩教育費 (萬元)">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">手機號碼 <span class="text-red-500">*</span></label>
+                            <input type="tel" id="user-phone" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500" placeholder="09xxxxxxxx">
+                            <p id="err-phone" class="error-msg"><i class="fas fa-exclamation-circle"></i> 請填寫正確的 10 碼手機號碼</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">LINE ID <span class="text-red-500">*</span></label>
+                            <input type="text" id="user-line" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500" placeholder="請輸入ID">
+                            <p id="err-line" class="error-msg"><i class="fas fa-exclamation-circle"></i> 請填寫 LINE ID</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">E-mail <span class="text-gray-400 font-normal">(選填)</span></label>
+                            <input type="email" id="user-email" class="w-full p-2 border border-gray-300 rounded-lg outline-none focus:border-blue-500" placeholder="請輸入E-mail">
+                            <p id="err-email" class="error-msg"><i class="fas fa-exclamation-circle"></i> 請填寫正確 E-mail 格式</p>
+                        </div>
+
+                        <div class="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox" id="privacy-consent" class="mt-1 mr-2 w-4 h-4 text-blue-600 rounded">
+                                <span class="text-xs text-gray-500 leading-relaxed">
+                                    我已閱讀並同意<a href="#" class="text-blue-600 underline" onclick="event.preventDefault(); document.getElementById('privacy-modal').style.display='flex';">個資蒐集聲明</a>，同意系統處理及利用我的資料。<span class="text-red-500">*</span>
+                                </span>
+                            </label>
+                            <p id="err-privacy" class="error-msg"><i class="fas fa-exclamation-circle"></i> 必須勾選同意才能進行下一步</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3 mt-4 flex-shrink-0">
+                        <button onclick="prevStep(0)" class="w-1/3 bg-white border-2 border-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow-sm hover:bg-gray-50">上一頁</button>
+                        <button onclick="validateStep1()" class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition">下一步</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step-2" class="card">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-blue-100 pb-2"><i class="fas fa-users text-blue-600 mr-2"></i> 2. 家庭責任</h2>
+                    <div class="space-y-5 flex-grow overflow-y-auto pr-2">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">家裡目前有哪些人需要依靠您的收入？(可複選)</label>
+                            <div>
+                                <label><input type="checkbox" class="hidden-chk" id="dep-spouse" value="配偶" onchange="toggleDepOther()"><span class="chk-btn">配偶</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="dep-child" value="小孩" onchange="toggleKids(); toggleDepOther();"><span class="chk-btn">小孩</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="dep-parent" value="父母" onchange="toggleDepOther()"><span class="chk-btn">父母</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="dep-none" value="無" onchange="toggleDepNone()"><span class="chk-btn">目前沒有</span></label>
+                            </div>
+                        </div>
+
+                        <div id="kids-section" class="hidden bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <label class="block text-sm font-bold text-blue-800 mb-2">請填寫小孩狀況 (精算各別教育金)：</label>
+                            <div class="flex items-center mb-3">
+                                <span class="text-sm font-bold mr-2 w-20">小孩人數:</span>
+                                <select id="kids-count" onchange="renderKids()" class="w-20 p-2 border border-blue-300 rounded-lg text-center outline-none font-bold text-blue-700 bg-white">
+                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                                </select>
+                                <span class="ml-2 text-sm">人</span>
+                            </div>
+                            <div id="kids-ages-container" class="space-y-3"></div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">家庭主要經濟來源是？ <span class="text-red-500">*</span></label>
+                            <div>
+                                <label><input type="radio" class="hidden-rad" name="income_src" value="主要是我" checked><span class="chk-btn">主要是我</span></label>
+                                <label><input type="radio" class="hidden-rad" name="income_src" value="主要是配偶"><span class="chk-btn">主要是配偶</span></label>
+                                <label><input type="radio" class="hidden-rad" name="income_src" value="共同負擔"><span class="chk-btn">共同負擔</span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3 mt-4 flex-shrink-0">
+                        <button onclick="prevStep(1)" class="w-1/3 bg-white border-2 border-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow-sm hover:bg-gray-50">上一頁</button>
+                        <button onclick="validateStep2()" class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition">下一步</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step-3" class="card">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-blue-100 pb-2"><i class="fas fa-wallet text-blue-600 mr-2"></i> 3. 財務與負債</h2>
+                    <div class="space-y-5 flex-grow overflow-y-auto pr-2">
+                        
+                        <div class="bg-red-50 p-4 rounded-xl border border-red-100">
+                            <label class="block text-sm font-bold text-red-800 mb-1">家庭「每月」生活費 <span class="text-red-500">*</span></label>
+                            <p class="text-xs text-red-600 mb-2">包含食衣住行、孝親費等，系統將自動加計2%通膨。</p>
+                            <div class="flex items-center">
+                                <input type="number" id="monthly-exp" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border border-red-300 rounded-lg text-lg font-bold text-red-700 outline-none" placeholder="例如: 5">
+                                <span class="ml-2 font-bold text-gray-600 w-12">萬元</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">目前是否有貸款需持續償還？</label>
+                            <div>
+                                <label><input type="checkbox" class="hidden-chk" id="loan-house" onchange="toggleLoan('other')"><span class="chk-btn">房貸</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="loan-car" onchange="toggleLoan('other')"><span class="chk-btn">車貸</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="loan-credit" onchange="toggleLoan('other')"><span class="chk-btn">信貸</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="loan-other" onchange="toggleLoan('other')"><span class="chk-btn">其他</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="loan-none" onchange="toggleLoan('none')"><span class="chk-btn">無貸款</span></label>
+                            </div>
+                            <div id="loan-amt-container" class="flex items-center mt-3 hidden bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <span class="text-sm font-bold mr-2 whitespace-nowrap text-gray-700">總貸款餘額約:</span>
+                                <input type="number" id="loan-amt" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border border-gray-300 rounded-lg outline-none" placeholder="例如: 350">
+                                <span class="ml-2 font-bold text-gray-600">萬元</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-green-50 p-4 rounded-xl border border-green-100">
+                            <label class="block text-sm font-bold text-green-800 mb-1">目前家庭可動用存款 / 投資 <span class="text-red-500">*</span></label>
+                            <div class="flex items-center mt-2">
+                                <input type="number" id="savings-amt" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border border-green-300 rounded-lg text-lg font-bold text-green-700 outline-none" placeholder="例如: 100">
+                                <span class="ml-2 font-bold text-gray-600 w-12">萬元</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-3 mt-4 flex-shrink-0">
+                        <button onclick="prevStep(2)" class="w-1/3 bg-white border-2 border-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow-sm hover:bg-gray-50">上一頁</button>
+                        <button onclick="validateStep3()" class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-xl shadow-md transition">下一步</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step-4" class="card">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-blue-100 pb-2"><i class="fas fa-shield-alt text-blue-600 mr-2"></i> 4. 關鍵防護檢視</h2>
+                    <div class="space-y-6 flex-grow overflow-y-auto pr-2 flex flex-col justify-start">
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">您目前是否已有「壽險」保障？</label>
+                            <select id="exist-life-ins" onchange="toggleLifeIns()" class="w-full p-2 border border-gray-300 rounded-lg bg-white mb-2">
+                                <option value="" disabled selected hidden>請選擇...</option>
+                                <option value="0">沒有壽險</option>
+                                <option value="200">有，但 200萬以下</option>
+                                <option value="500">有，約 200~500萬</option>
+                                <option value="1000">有，約 500~1000萬</option>
+                                <option value="1000+">有，1000萬以上</option>
+                                <option value="custom" class="text-blue-600 font-bold">✍️ 我知道精準額度</option>
+                                <option value="unsure" class="text-red-500">❌ 有買，但不確定額度</option>
+                            </select>
+                            <input type="number" id="custom-life-ins" min="0" oninput="this.value = Math.abs(this.value)" class="w-full p-2 border-2 border-blue-400 rounded-lg hidden outline-none" placeholder="請輸入精準壽險額度 (萬元)">
+                        </div>
+
+                        <div class="bg-gray-50 p-6 rounded-2xl border-l-4 border-orange-500 shadow-sm mt-4">
+                            <h3 class="text-xl font-bold text-orange-700 mb-4 text-center"><i class="fas fa-lightbulb"></i> 關鍵發想題</h3>
+                            <label class="block text-base font-bold text-gray-700 mb-4 leading-relaxed text-center">
+                                如果今天突然為家裡留下 <br><span class="text-3xl text-red-600 mx-1">1,000 萬</span> 現金<br>依目前的開銷，您覺得家人可以撐多久？ <span class="text-red-500">*</span>
+                            </label>
+                            <select id="anchor-q" class="w-full p-4 border-2 border-orange-300 rounded-xl font-bold text-gray-700 shadow-sm bg-white outline-none">
+                                <option value="" disabled selected hidden>請憑直覺選擇...</option>
+                                <option value="3年內">大約 3 年內</option>
+                                <option value="3~5年">大約 3 ~ 5 年</option>
+                                <option value="5~10年">大約 5 ~ 10 年</option>
+                                <option value="可以撐很久">應該可以撐很久</option>
+                            </select>
+                        </div>
+                        <div id="validation-msg" class="hidden text-center text-red-500 font-bold text-sm">⚠️ 請完成上方選擇</div>
+                    </div>
+                    
+                    <div class="flex space-x-3 mt-4 flex-shrink-0">
+                        <button onclick="prevStep(3)" class="w-1/3 bg-white border-2 border-gray-300 text-gray-700 font-bold py-3 rounded-xl shadow-sm hover:bg-gray-50">上一頁</button>
+                        <button id="btn-submit" onclick="calculateAndSubmit()" class="w-2/3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition">產生精算報告 <i class="fas fa-magic ml-1"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="step-result" class="card p-0">
+                <div id="report-content" class="overflow-y-auto flex-grow bg-white pb-6">
+                    
+                    <div class="flex justify-between items-start border-b-2 border-blue-100 pb-3 mb-4 mx-4 mt-5">
+                        <div class="flex-1 pr-2">
+                            <h1 class="text-2xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-900 to-blue-500 tracking-widest drop-shadow-sm leading-tight">家庭財務與<br>壽險診斷</h1>
+                            <span class="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold tracking-widest shadow-sm border border-blue-200">留愛不留債，精算真實缺口</span>
+                        </div>
+                        <div class="flex-shrink-0 bg-gray-50 p-2.5 rounded-lg border border-gray-200 shadow-sm text-xs mt-1">
+                            <div class="flex items-center justify-end mb-1.5">
+                                <span class="inline-flex justify-between w-14 text-gray-500"><span>姓</span><span>名</span></span>
+                                <span class="mx-1 text-gray-400">：</span>
+                                <span class="font-bold text-gray-800 w-20 text-left truncate" id="ui-name">--</span>
+                            </div>
+                            <div class="flex items-center justify-end mb-1.5">
+                                <span class="inline-flex justify-between w-14 text-gray-500"><span>年</span><span>紀</span></span>
+                                <span class="mx-1 text-gray-400">：</span>
+                                <span class="font-bold text-gray-800 w-20 text-left" id="ui-age">--</span>
+                            </div>
+                            <div class="flex items-center justify-end">
+                                <span class="inline-flex justify-between w-14 text-gray-500"><span>填</span><span>表</span><span>日</span><span>期</span></span>
+                                <span class="mx-1 text-gray-400">：</span>
+                                <span class="font-bold text-gray-800 w-20 text-left" id="ui-date">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-blue-50 p-4 rounded-xl mb-4 text-center border border-blue-100 mx-4">
+                        <p class="text-sm text-gray-600 font-bold mb-1">家庭真實防護力分數</p>
+                        <div class="text-5xl font-extrabold text-blue-600" id="ui-score-val">--</div>
+                    </div>
+
+                    <div class="chart-box"><canvas id="uiRadarChart"></canvas></div>
+
+                    <div class="mt-6 mb-4 px-4">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm text-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-gray-700">🎯 總需求 <span class="text-xs font-normal text-gray-500">(生活+貸款+教育)</span></span>
+                                <span class="font-bold text-lg text-gray-800" id="ui-sum-need">--</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-red-200 pb-3 mb-3">
+                                <span class="font-bold text-gray-700">🛡️ 總資源 <span class="text-xs font-normal text-gray-500">(存款+現有壽險)</span></span>
+                                <span class="font-bold text-lg text-gray-800" id="ui-sum-have">--</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-red-600 text-base">⚠️ 真實家庭缺口</span>
+                                <span class="font-bold text-red-600 text-2xl" id="ui-sum-gap">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 mb-6 px-4">
+                        <h3 class="font-bold text-lg text-gray-800 mb-3 border-l-4 border-blue-500 pl-2">📊 財務缺口精算清單</h3>
+                        <div class="ui-grid" id="ui-cards-container"></div>
+                    </div>
+
+                    <div class="report-conclusion mx-4">
+                        <h3>💡 專業顧問總結</h3>
+                        <p id="ui-conclusion-text" class="text-gray-700 leading-relaxed"></p>
+                    </div>
+
+                    <div class="text-center mt-6 pb-6">
+                        <button onclick="location.reload()" class="text-gray-400 text-sm hover:text-gray-600 underline"><i class="fas fa-redo mr-1"></i>重新測驗</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons flex space-x-3 p-4 bg-white border-t border-gray-100">
+                    <button onclick="downloadPDF(this)" class="flex-1 bg-white border-2 border-gray-800 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-100 flex flex-col items-center justify-center shadow-sm transition">
+                        <span id="btn-dl-text" class="text-sm"><i class="fas fa-file-pdf mr-1 text-red-500"></i> 下載報告</span>
+                    </button>
+                    <button onclick="document.getElementById('contact-modal').style.display='flex';" class="flex-1 bg-[#00B900] hover:bg-[#00a000] text-white font-bold py-3 rounded-xl shadow-md flex flex-col items-center justify-center transition">
+                        <span class="text-sm"><i class="fab fa-line mr-1 text-lg"></i> 加 LINE 預約解析</span>
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div id="full-loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(248, 249, 250, 1); z-index: 999999; flex-direction: column; justify-content: center; align-items: center;">
+        <i class="fas fa-spinner fa-spin text-blue-600 text-5xl mb-4"></i>
+        <h2 class="text-xl font-bold text-gray-800">專屬報告生成中...</h2>
+    </div>
+
+    <div id="pdf-overlay">
+        <div id="pdf-template">
+            <div class="pdf-header" style="align-items: flex-end;">
+                <div class="pdf-title">
+                    <h1>家庭財務與壽險診斷</h1>
+                    <p>留愛不留債，精算真實缺口</p>
+                </div>
+                <div class="pdf-meta" style="font-size: 11px; text-align: right;">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 3px;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>姓</span><span>名</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-name">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 3px;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>年</span><span>紀</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-age">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>填</span><span>表</span><span>日</span><span>期</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-date">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #eff6ff; padding: 15px 20px; border-radius: 12px; height: 210px;">
+                <div style="text-align: center; width: 35%;">
+                    <div id="pdf-score-val" style="font-size: 64px; font-weight: bold; line-height: 1; margin-bottom: 5px; color:#2563eb;">--</div>
+                    <div style="font-size: 14px; color: #666; font-weight: bold;">家庭防護分數</div>
+                </div>
+                <div style="width: 65%; height: 190px; position: relative;">
+                    <canvas id="pdfRadarChart" style="max-height: 190px !important;"></canvas>
+                </div>
+            </div>
+
+            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 8px 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; font-size: 11px; align-items: center;">
+                <span>🎯 總需求: <b id="pdf-sum-need">--</b></span>
+                <span style="color:#9ca3af; font-size:14px;">➖</span>
+                <span>🛡️ 總資源: <b id="pdf-sum-have">--</b></span>
+                <span style="color:#9ca3af; font-size:14px;">🟰</span>
+                <span style="color: #dc2626;">⚠️ 真實缺口: <b id="pdf-sum-gap" style="font-size:14px;">--</b></span>
+            </div>
+
+            <div class="pdf-grid" id="pdf-cards-container"></div>
+
+            <div style="background: #f0f9f1; border-left: 4px solid #3b82f6; padding: 10px 15px; margin-top: auto; margin-bottom: 10px; border-radius: 6px;">
+                <h3 style="color: #1e3a8a; font-size: 13px; margin-bottom: 4px; font-weight: bold;">💡 專業顧問總結</h3>
+                <p id="pdf-conclusion-text" style="font-size: 11px; color: #333; line-height: 1.5; margin: 0;"></p>
+            </div>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 9px; color: #9ca3af; max-width: 75%; line-height: 1.4;">
+                    本報告依據使用者填寫數據進行初步試算，已包含預估 2% 通貨膨脹率。實際保險規劃與理賠條款，請預約諮詢專業顧問以獲取客製化建議。
+                </div>
+                <div style="text-align: center;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://line.me/R/ti/p/@704bzjfq" style="width: 45px; height: 45px; margin: 0 auto;">
+                    <div style="font-size: 8px; color: #666; margin-top: 2px; font-weight: bold;">加 LINE 預約</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbw841AW8ZoegM1HSAjjo9axjYypMvKBIgITk5nClWxi2Z8QXjSBJOWmJOd8nTWcKnAeUQ/exec'; 
+
+        let currentStep = 0;
+        let uiChart = null, pdfChart = null;
+        let rData = {}; 
+
+        const eduBaseMap = {
+            '台北市': 350, '新北市': 300, '桃園市': 300, '台中市': 300, '台南市': 250, '高雄市': 250, '新竹市': 300, '新竹縣': 300
+        };
+        const getEduBase = (city) => eduBaseMap[city] !== undefined ? eduBaseMap[city] : 200;
+
+        function scrollToTop(stepId) {
+            const el = document.getElementById(stepId);
+            if(el) {
+                const scrollArea = el.querySelector('.card-content') || el.querySelector('#report-content');
+                if(scrollArea) scrollArea.scrollTop = 0;
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function nextStep(step) {
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            currentStep = step;
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+            document.getElementById('progress').style.width = `${(step/4)*100}%`;
+            scrollToTop(`step-${currentStep}`); 
+        }
+        
+        function prevStep(step) {
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            currentStep = step;
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+            document.getElementById('progress').style.width = `${(step/4)*100}%`;
+            scrollToTop(`step-${currentStep}`); 
+        }
+
+        function validateStep1() {
+            let isValid = true;
+            const checkField = (id) => {
+                const el = document.getElementById(id);
+                if(!el.value.trim()) { el.classList.add('input-error'); document.getElementById(`err-${id.split('-')[1]}`).style.display = 'block'; isValid = false; }
+                else { el.classList.remove('input-error'); document.getElementById(`err-${id.split('-')[1]}`).style.display = 'none'; }
+            };
+
+            checkField('user-name'); checkField('user-age'); checkField('user-marriage'); checkField('user-region'); checkField('user-line');
+            
+            const phone = document.getElementById('user-phone');
+            if(!/^09\d{8}$/.test(phone.value.trim())) { phone.classList.add('input-error'); document.getElementById('err-phone').style.display = 'block'; isValid = false; }
+            else { phone.classList.remove('input-error'); document.getElementById('err-phone').style.display = 'none'; }
+            
+            const email = document.getElementById('user-email');
+            if(email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) { 
+                email.classList.add('input-error'); document.getElementById('err-email').style.display = 'block'; isValid = false; 
+            } else { 
+                email.classList.remove('input-error'); document.getElementById('err-email').style.display = 'none'; 
+            }
+
+            if (!document.getElementById('privacy-consent').checked) { document.getElementById('err-privacy').style.display = 'block'; isValid = false; }
+            else { document.getElementById('err-privacy').style.display = 'none'; }
+
+            if(isValid) nextStep(2);
+        }
+
+        function toggleDepNone() {
+            if(document.getElementById('dep-none').checked) {
+                document.getElementById('dep-spouse').checked = false;
+                document.getElementById('dep-child').checked = false;
+                document.getElementById('dep-parent').checked = false;
+                toggleKids();
+            }
+        }
+        function toggleDepOther() {
+            if(document.getElementById('dep-spouse').checked || document.getElementById('dep-child').checked || document.getElementById('dep-parent').checked) {
+                document.getElementById('dep-none').checked = false;
+            }
+        }
+        
+        function toggleKids() {
+            const isChecked = document.getElementById('dep-child').checked;
+            document.getElementById('kids-section').style.display = isChecked ? 'block' : 'none';
+            if(isChecked && document.getElementById('kids-ages-container').innerHTML.trim() === '') renderKids();
+        }
+        
+        function renderKids() {
+            let count = parseInt(document.getElementById('kids-count').value);
+            if(isNaN(count) || count < 1) { count = 1; document.getElementById('kids-count').value = 1; }
+            const container = document.getElementById('kids-ages-container');
+            container.innerHTML = '';
+            for(let i=1; i<=count; i++) {
+                container.innerHTML += `
+                    <div class="flex items-center">
+                        <span class="text-sm font-bold text-gray-700 w-24">小孩 ${i} 年齡:</span>
+                        <select class="kid-age-select flex-grow p-2 border border-blue-200 rounded-lg text-sm bg-white outline-none focus:border-blue-500">
+                            <option value="" disabled selected hidden>必填：請選擇級距...</option>
+                            <option value="0-6">0~6 歲 (學齡前)</option>
+                            <option value="7-12">7~12 歲 (國小)</option>
+                            <option value="13-18">13~18 歲 (中學)</option>
+                            <option value="18+">18歲以上 (成年)</option>
+                        </select>
+                    </div>
+                `;
+            }
+        }
+        
+        function validateStep2() {
+            if(document.getElementById('dep-child').checked) {
+                const selects = document.querySelectorAll('.kid-age-select');
+                for(let sel of selects) {
+                    if(!sel.value) { alert("⚠️ 選擇有小孩時，每個小孩的年齡級距皆為必選！"); return; }
+                }
+            }
+            nextStep(3);
+        }
+
+        function toggleOverseas() {
+            document.getElementById('custom-edu-cost').style.display = (document.getElementById('user-region').value === '海外') ? 'block' : 'none';
+        }
+
+        function toggleLoan(type) {
+            const noneChk = document.getElementById('loan-none');
+            const others = ['loan-house', 'loan-car', 'loan-credit', 'loan-other'];
+            const amtDiv = document.getElementById('loan-amt-container');
+            
+            if(type === 'none') {
+                if(noneChk.checked) {
+                    others.forEach(id => document.getElementById(id).checked = false);
+                    amtDiv.style.display = 'none';
+                    document.getElementById('loan-amt').value = '';
+                }
+            } else {
+                noneChk.checked = false;
+                let anyChecked = others.some(id => document.getElementById(id).checked);
+                amtDiv.style.display = anyChecked ? 'flex' : 'none';
+                if(!anyChecked) document.getElementById('loan-amt').value = '';
+            }
+        }
+        function validateStep3() {
+            if(!document.getElementById('monthly-exp').value.trim()) { alert("⚠️ 家庭每月生活費為必填！"); return; }
+            if(!document.getElementById('savings-amt').value.trim()) { alert("⚠️ 家庭存款為必填 (若無可填 0)！"); return; }
+            
+            const others = ['loan-house', 'loan-car', 'loan-credit', 'loan-other'];
+            if(others.some(id => document.getElementById(id).checked) && !document.getElementById('loan-amt').value.trim()) {
+                alert("⚠️ 您勾選了有貸款，請填寫總貸款餘額！"); return;
+            }
+            nextStep(4);
+        }
+
+        function toggleLifeIns() {
+            document.getElementById('custom-life-ins').style.display = (document.getElementById('exist-life-ins').value === 'custom') ? 'block' : 'none';
+        }
+
+        function calculateAndSubmit() {
+            const lifeSel = document.getElementById('exist-life-ins').value;
+            const anchor = document.getElementById('anchor-q').value;
+            if(!lifeSel || !anchor) { document.getElementById('validation-msg').style.display = 'block'; return; }
+
+            document.getElementById(`step-4`).classList.remove('active');
+            currentStep = 'result';
+            document.getElementById(`step-result`).classList.add('active');
+            scrollToTop('step-result'); 
+
+            const name = document.getElementById('user-name').value;
+            const age = document.getElementById('user-age').value;
+            const region = document.getElementById('user-region').value;
+            const mExpInput = parseFloat(document.getElementById('monthly-exp').value) || 0; 
+            const loanAmt = parseFloat(document.getElementById('loan-amt').value) || 0;
+            const savingsAmt = parseFloat(document.getElementById('savings-amt').value) || 0;
+
+            let years = 10;
+            if(document.getElementById('dep-child').checked) years = 20;
+            else if(document.getElementById('dep-spouse').checked || document.getElementById('dep-parent').checked) years = 15;
+
+            const annualExp = mExpInput * 12;
+            const inflationFactor = (Math.pow(1.02, years) - 1) / 0.02;
+            const totalLivingExp = Math.round(annualExp * inflationFactor);
+
+            let eduCost = 0;
+            let kidsDetailStr = "無";
+            if(document.getElementById('dep-child').checked) {
+                const selects = document.querySelectorAll('.kid-age-select');
+                let base = getEduBase(region);
+                if(region === '海外') base = parseFloat(document.getElementById('custom-edu-cost').value) || 0;
+                
+                let ageTexts = [];
+                selects.forEach(sel => {
+                    let multiplier = 1.0;
+                    if(sel.value === '7-12') multiplier = 0.7;
+                    if(sel.value === '13-18') multiplier = 0.4;
+                    if(sel.value === '18+') multiplier = 0;
+                    eduCost += Math.round(base * multiplier);
+                    ageTexts.push(sel.options[sel.selectedIndex].text.split(' ')[0]);
+                });
+                kidsDetailStr = `${document.getElementById('kids-count').value}人 (${ageTexts.join(', ')})`;
+            }
+
+            let lifeInsAmt = 0;
+            if(lifeSel === 'unsure') lifeInsAmt = 0; 
+            else if(lifeSel === 'custom') lifeInsAmt = parseFloat(document.getElementById('custom-life-ins').value) || 0;
+            else if(lifeSel === '1000+') lifeInsAmt = 1500; 
+            else lifeInsAmt = parseInt(lifeSel) || 0;
+
+            const totalNeed = totalLivingExp + loanAmt + eduCost;
+            const totalHave = savingsAmt + lifeInsAmt;
+            const gap = Math.max(0, totalNeed - totalHave);
+
+            let remain = totalHave;
+            let pctEmg = Math.min(100, Math.round((savingsAmt / (mExpInput * 6)) * 100)) || 0;
+            if(mExpInput === 0) pctEmg = 100;
+            
+            let pctTotalDef = totalNeed === 0 ? 100 : Math.min(100, Math.round((totalHave / totalNeed) * 100));
+
+            let pctDebt = 100;
+            if(loanAmt > 0) {
+                pctDebt = Math.min(100, Math.round((remain / loanAmt) * 100));
+                remain = Math.max(0, remain - loanAmt);
+            }
+
+            let pctLiv = 100;
+            if(totalLivingExp > 0) {
+                pctLiv = Math.min(100, Math.round((remain / totalLivingExp) * 100));
+                remain = Math.max(0, remain - totalLivingExp);
+            }
+
+            let pctEdu = 100;
+            if(eduCost > 0) {
+                pctEdu = Math.min(100, Math.round((remain / eduCost) * 100));
+            }
+
+            const totalScore = Math.floor((pctEmg + pctTotalDef + pctDebt + pctLiv + pctEdu) / 5);
+
+            rData = { name, age, region, anchor, mExpInput, years, totalLivingExp, loanAmt, eduCost, totalNeed, savingsAmt, lifeInsAmt, totalHave, gap, pctEmg, pctTotalDef, pctDebt, pctLiv, pctEdu, totalScore };
+
+            renderUI();
+            uiChart = drawRadar('uiRadarChart', false);
+
+            let deps = [];
+            if(document.getElementById('dep-spouse').checked) deps.push('配偶');
+            if(document.getElementById('dep-child').checked) deps.push('小孩');
+            if(document.getElementById('dep-parent').checked) deps.push('父母');
+            if(document.getElementById('dep-none').checked) deps.push('無');
+
+            let incSrc = document.querySelector('input[name="income_src"]:checked').value;
+
+            let loanTypes = [];
+            if(document.getElementById('loan-house').checked) loanTypes.push('房貸');
+            if(document.getElementById('loan-car').checked) loanTypes.push('車貸');
+            if(document.getElementById('loan-credit').checked) loanTypes.push('信貸');
+            if(document.getElementById('loan-other').checked) loanTypes.push('其他');
+            if(document.getElementById('loan-none').checked) loanTypes.push('無');
+
+            let existLifeStr = document.getElementById('exist-life-ins').options[document.getElementById('exist-life-ins').selectedIndex].text;
+            if(lifeSel === 'custom') existLifeStr += ` (${lifeInsAmt}萬)`;
+
+            const payload = { 
+                name, age, marriage: document.getElementById('user-marriage').value, region, 
+                phone: document.getElementById('user-phone').value, line: document.getElementById('user-line').value, email: document.getElementById('user-email').value,
+                dependents: deps.join(', '), kids_details: kidsDetailStr, income_src: incSrc, monthly_exp: mExpInput,
+                loan_types: loanTypes.join(', '), loan_amt: loanAmt, savings_amt: savingsAmt, exist_life_ins: existLifeStr, anchor,
+                need: totalNeed, have: totalHave, gap, score: totalScore
+            };
+
+            fetch(scriptURL, { method: 'POST', body: JSON.stringify(payload), headers: { "Content-Type": "text/plain;charset=utf-8" } }).catch(e => console.log(e));
+        }
+
+        function renderCard(title, icon, need, have, pct) {
+            let gap = Math.max(0, need - have);
+            let gapHtml = gap > 0 ? `<div class="risk-gap gap-red">⚠️ 資金缺口：-${gap} 萬</div>` : `<div class="risk-gap gap-green">✅ 資金已備足</div>`;
+            if (need === 0) gapHtml = `<div class="risk-gap gap-green">✅ 無此項責任</div>`;
+            
+            return `
+                <div class="risk-card">
+                    <div class="risk-hdr"><span><i class="${icon} mr-2 text-blue-500"></i>${title}</span><span>達成率 ${pct}%</span></div>
+                    <div class="risk-stats">
+                        <div class="flex justify-between mb-1"><span>🎯 應備目標</span><span class="font-bold">${need} 萬</span></div>
+                        <div class="flex justify-between"><span>🛡️ 目前準備</span><span class="font-bold">${have} 萬</span></div>
+                    </div>
+                    <div class="risk-bar-bg"><div class="risk-bar-fill" style="width: ${pct}%"></div></div>
+                    ${gapHtml}
+                </div>
+            `;
+        }
+
+        function renderUI() {
+            document.getElementById('ui-name').innerText = rData.name;
+            document.getElementById('ui-age').innerText = rData.age + " 歲";
+            document.getElementById('ui-date').innerText = new Date().toLocaleDateString();
+            
+            document.getElementById('pdf-name').innerText = rData.name;
+            document.getElementById('pdf-age').innerText = rData.age;
+            document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
+            
+            document.getElementById('ui-score-val').innerText = rData.totalScore;
+            document.getElementById('pdf-score-val').innerText = rData.totalScore;
+
+            document.getElementById('ui-sum-need').innerText = `${rData.totalNeed} 萬`;
+            document.getElementById('ui-sum-have').innerText = `- ${rData.totalHave} 萬`;
+            document.getElementById('ui-sum-gap').innerText = `${rData.gap} 萬`;
+            document.getElementById('pdf-sum-need').innerText = `${rData.totalNeed}萬`;
+            document.getElementById('pdf-sum-have').innerText = `${rData.totalHave}萬`;
+            document.getElementById('pdf-sum-gap').innerText = `${rData.gap}萬`;
+
+            let html = "";
+            html += renderCard('家庭生活費 (含2%通膨)', 'fas fa-utensils', rData.totalLivingExp, rData.pctLiv === 100 ? rData.totalLivingExp : Math.floor(rData.totalLivingExp * rData.pctLiv / 100), rData.pctLiv);
+            html += renderCard('貸款清償', 'fas fa-home', rData.loanAmt, rData.pctDebt === 100 ? rData.loanAmt : Math.floor(rData.loanAmt * rData.pctDebt / 100), rData.pctDebt);
+            if(rData.eduCost > 0) {
+                html += renderCard('子女教育基金', 'fas fa-graduation-cap', rData.eduCost, rData.pctEdu === 100 ? rData.eduCost : Math.floor(rData.eduCost * rData.pctEdu / 100), rData.pctEdu);
+            }
+            html += renderCard('急用現金水位', 'fas fa-piggy-bank', rData.mExpInput * 6, rData.savingsAmt, rData.pctEmg);
+            
+            document.getElementById('ui-cards-container').innerHTML = html;
+            document.getElementById('pdf-cards-container').innerHTML = html;
+
+            let conclusion = `**這份缺口數據是怎麼算出來的呢？讓我們為您逐一拆解：**<br><br>
+            1️⃣ **家庭生活費 (${rData.totalLivingExp} 萬)**：以您每月 ${rData.mExpInput} 萬的開銷，並加計每年 2% 通膨，保障家人未來 ${rData.years} 年的基本生活。<br>
+            2️⃣ **貸款清償 (${rData.loanAmt} 萬)**：確保您留下的債務不會成為家人的重擔。<br>
+            ${rData.eduCost > 0 ? `3️⃣ **子女教育基金 (${rData.eduCost} 萬)**：依據「${rData.region}」的在地大數據及孩子目前的年齡精算。<br>` : ''}
+            <br>以上項目加總，您的家庭真正需要高達 **${rData.totalNeed} 萬** 的防護網！<br><br>
+            然而，盤點您目前的總資源（存款 ${rData.savingsAmt} 萬 ＋ 現有壽險 ${rData.lifeInsAmt} 萬），總計為 **${rData.totalHave} 萬**。<br>
+            【總需求 ${rData.totalNeed} 萬】➖【總資源 ${rData.totalHave} 萬】🟰 **<span style="color:#dc2626;">真實缺口 -${rData.gap} 萬</span>**。<br><br>
+            您原先憑直覺認為 1,000 萬可以撐「**${rData.anchor}**」，但殘酷的現實是，萬一風險明天就來敲門，這 1,000 萬絕對不夠用。請不要讓對家人的愛，最後變成他們的負債！現在就點擊下方【加 LINE 預約解析】按鈕，讓我幫您找出隱藏的理賠空間，用最聰明的預算填補這巨大的黑洞！`;
+            
+            if(rData.gap === 0) conclusion = `**這份滿分報告是怎麼算出來的呢？讓我們為您逐一拆解：**<br><br>
+            1️⃣ **家庭生活費 (${rData.totalLivingExp} 萬)**：以您每月 ${rData.mExpInput} 萬的開銷，並加計每年 2% 通膨，計算未來 ${rData.years} 年的保障。<br>
+            2️⃣ **貸款清償 (${rData.loanAmt} 萬)**：結清目前的所有債務餘額。<br>
+            ${rData.eduCost > 0 ? `3️⃣ **子女教育基金 (${rData.eduCost} 萬)**：依據「${rData.region}」的大數據及孩子目前的年齡精算。<br>` : ''}
+            <br>以上項目加總，您的家庭總需求為 **${rData.totalNeed} 萬**。<br><br>
+            太棒了！盤點您目前的總資源（存款 ${rData.savingsAmt} 萬 ＋ 現有壽險 ${rData.lifeInsAmt} 萬 = **${rData.totalHave} 萬**），已足以完全覆蓋上述的沉重開銷，防護網無懈可擊！看得出您對家人充滿了無私的責任感。<br><br>
+            您原先認為 1,000 萬可以撐「**${rData.anchor}**」，而事實證明您不僅充滿警覺，更已經做好了萬全準備。不過，醫療技術日新月異，建議您趁著現在游刃有餘，點擊下方按鈕預約免費的「保單健診」，讓我們幫您確認這張防護網不僅「夠深」，而且完全「零死角」！`;
+
+            document.getElementById('ui-conclusion-text').innerHTML = conclusion.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            document.getElementById('pdf-conclusion-text').innerHTML = conclusion.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/<br><br>/g, '<br>');
+        }
+
+        function drawRadar(canvasId, isPdf) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if(canvasId === 'uiRadarChart' && uiChart) uiChart.destroy();
+            if(canvasId === 'pdfRadarChart' && pdfChart) pdfChart.destroy();
+
+            const data = [rData.pctEmg, rData.pctDebt, rData.pctLiv, rData.pctEdu, rData.pctTotalDef];
+            const labels = ['急用現金水位', '債務清償能力', '生活費防護力', '教育基金準備', '整體防護率'];
+
+            return new Chart(ctx, {
+                type: 'radar',
+                data: { labels: labels, datasets: [{ data: data, backgroundColor: 'rgba(59, 130, 246, 0.25)', borderColor: 'rgba(29, 78, 216, 1)', borderWidth: 2, pointBackgroundColor: '#1d4ed8' }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, layout: { padding: isPdf ? 15 : 20 },
+                    scales: { r: { min: 0, max: 100, ticks: { display: false }, pointLabels: { font: { size: isPdf ? 13 : 13, family: 'Microsoft JhengHei', weight: 'bold' }, color: '#1f2937' } } },
+                    plugins: { legend: { display: false } }, animation: isPdf ? false : { duration: 1000 }
+                }
+            });
+        }
+
+        function downloadPDF(btn) {
+            const originTxt = document.getElementById('btn-dl-text').innerHTML;
+            btn.disabled = true;
+            document.getElementById('full-loading-overlay').style.display = 'flex';
+            document.getElementById('pdf-overlay').style.display = 'block'; 
+
+            setTimeout(() => {
+                pdfChart = drawRadar('pdfRadarChart', true);
+                const el = document.getElementById('pdf-template');
+                const opt = { 
+                    margin: 0, filename: `壽險缺口精算_${rData.name}.pdf`, image: { type: 'jpeg', quality: 0.98 }, 
+                    html2canvas: { scale: 2, useCORS: true, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().from(el).set(opt).save().then(() => {
+                    document.getElementById('pdf-overlay').style.display = 'none'; 
+                    document.getElementById('full-loading-overlay').style.display = 'none'; 
+                    btn.disabled = false; document.getElementById('btn-dl-text').innerHTML = originTxt;
+                });
+            }, 600);
+        }
+    </script>
+</body>
+</html>
