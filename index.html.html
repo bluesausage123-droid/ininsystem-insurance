@@ -375,10 +375,10 @@
                                 <!-- 移除 text-center，改用 text-left 讓選單靠左貼齊 -->
                                 <select id="l-anchor" class="q-input font-bold text-left !border-[#C5A880] text-[#1E293B] cursor-pointer">
                                     <option value="" disabled selected hidden>請點擊選擇...</option>
-                                    <option value="3年內">大約 3 年以內吧</option>
+                                    <option value="3年內">大約 3 年以內</option>
                                     <option value="3~5年">大約可以撐 3~5 年</option>
                                     <option value="5~10年">大約可以撐 5~10 年</option>
-                                    <option value="可以撐很久">1000萬應該可以撐很久！</option>
+                                    <option value="可以撐很久">應該可以撐10年以上</option>
                                 </select>
                                 <p id="validation-msg" class="error-msg text-center mt-3 bg-red-50 text-red-600 py-1.5 rounded-md border border-red-100">⚠️ 這是進入下一關的最後一題喔，請憑直覺選一個！</p>
                             </div>
@@ -400,19 +400,20 @@
                     <div class="flex-grow overflow-y-auto pr-1 pb-4">
                         <div class="q-block">
                             <label class="q-label">Q1. 目前是否有幫自己規劃醫療相關保險？</label>
-                            <select id="m-q1" onchange="mQ1Check()" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">目前沒有</option><option value="2">有買，但其實不確定內容</option><option value="0">有的</option></select>
+                            <select id="m-q1" onchange="mQ1Check()" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="2">沒有</option><option value="0">有
+</option></select>
                         </div>
                         <div class="q-block" id="m-q2-box">
                             <label class="q-label">Q2. 那您清楚自己手上有哪些醫療保障嗎？</label>
-                            <select id="m-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="0">我很清楚</option><option value="1">大概知道一些</option><option value="2">說實話，不太清楚</option><option value="3">完全不知道買了什麼</option></select>
+                            <select id="m-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="0">我很清楚</option><option value="1">大概知道一些</option><option value="2">不清楚</option><option value="3">完全不知道買了什麼</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q3. 是否有「癌症」相關保障？</label>
-                            <select id="m-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="2">應該有，但不確定是哪一種</option><option value="1">有，是拿到一筆錢的(一次給付)</option><option value="0">有，一次給付跟後續療程都有</option></select>
+                            <select id="m-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="2">有，但不確定是哪一種</option><option value="1">有，一次性給付一筆錢</option><option value="0">有，一次性給付跟後續療程都有</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q4. 是否有「重大疾病/重大傷病」保障？</label>
-                            <select id="m-q4" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="0">有的</option><option value="2">不確定有沒有買到這個</option></select>
+                            <select id="m-q4" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="0">有</option><option value="2">不確定</option></select>
                         </div>
                     </div>
                 </div>
@@ -433,15 +434,15 @@
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q6. 如果真的需要住院動手術，您心裡最擔心的是什麼事？</label>
-                            <select id="m-q6" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="2">龐大的醫療費用</option><option value="1">沒辦法工作導致收入中斷</option><option value="1.1">沒人照顧家庭或小孩</option><option value="0">其實不太擔心</option></select>
+                            <select id="m-q6" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="2">龐大的醫療費用</option><option value="1">沒辦法工作導致收入中斷</option><option value="1.1">沒人照顧家庭或小孩</option><option value="0">我不擔心</option></select>
                         </div>
                         <div class="q-block !bg-red-50 !border-red-200">
                             <label class="q-label text-red-900">Q7. 如果生一場大病，需要馬上拿出 200萬 的自費，您覺得目前的準備狀態是？</label>
-                            <select id="m-q7" class="q-input !border-red-300"><option value="" disabled selected hidden>請選擇...</option><option value="0">保險額度夠，不用動到存款</option><option value="1">保險理賠加上部分存款應該夠</option><option value="2">可能需要動用到我大部分的存款</option><option value="3">目前其實沒有這麼多準備</option><option value="2.1">老實說，我不確定目前的準備夠不夠</option></select>
+                            <select id="m-q7" class="q-input !border-red-300"><option value="" disabled selected hidden>請選擇...</option><option value="0">保險額度夠，不用動到存款</option><option value="1">保險理賠加上部分存款應該夠</option><option value="2">可能需要動用到我大部分的存款</option><option value="3">目前沒有準備這麼大筆金額</option><option value="2.1">我不確定目前的準備夠不夠</option></select>
                         </div>
                         <div class="q-block !bg-orange-50 !border-orange-200">
                             <label class="q-label text-orange-900">Q8. 如果因為生病需要停工 1 年好好休養，家裡的生活費大約能維持多久？</label>
-                            <select id="m-q8" class="q-input !border-orange-300"><option value="" disabled selected hidden>請選擇...</option><option value="3">可能撐不到 3 個月</option><option value="2">大約半年吧</option><option value="1">大約 1 年左右</option><option value="0">2年以上都沒問題</option></select>
+                            <select id="m-q8" class="q-input !border-orange-300"><option value="" disabled selected hidden>請選擇...</option><option value="3">1~3個月</option><option value="2">大約半年</option><option value="1">大約 1 年左右</option><option value="0">2年以上</option></select>
                         </div>
                     </div>
                 </div>
@@ -459,15 +460,15 @@
                     <div class="flex-grow overflow-y-auto pr-1 pb-4">
                         <div class="q-block">
                             <label class="q-label">Q1. 您心裡預計幾歲要退休呢？</label>
-                            <select id="r-q1" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="55">55歲以前就想退了</option><option value="60">大約 56–60歲</option><option value="65">大約 61–65歲</option><option value="68">66歲以上再說吧</option><option value="65.1">老實說，還沒想過這個問題</option></select>
+                            <select id="r-q1" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="55">55歲以前</option><option value="60">大約 56–60歲</option><option value="65">大約 61–65歲</option><option value="68">66歲以上</option><option value="65.1">沒想過這個問題</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q2. 您希望退休後「每個月」能有多少錢可以花？(相當於現在的物價)</label>
-                            <select id="r-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="30000">簡單過，3萬以下</option><option value="40000">差不多 3–5萬</option><option value="65000">有點生活品質，5–8萬</option><option value="90000">滿充裕的，8–10萬</option><option value="120000">想要到處玩，10萬以上</option><option value="50000">其實沒認真算過</option></select>
+                            <select id="r-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="30000">3萬以下</option><option value="40000">3–5萬</option><option value="65000">5–8萬</option><option value="90000">8–10萬</option><option value="120000">10萬以上</option><option value="50000">沒算過</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q3. 您現在有開始為了退休，做一些專門的儲蓄或投資嗎？</label>
-                            <select id="r-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="沒有">還沒有開始</option><option value="有，但不固定">有，想到才存，不固定</option><option value="有固定">有的，有固定的紀律在存</option></select>
+                            <select id="r-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="沒有">還沒開始</option><option value="有，但不固定">有，想到才做，不一定</option><option value="有固定">有固定儲蓄或投資</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q4. 如果有的話，目前平均「每個月」大約提撥多少錢作為退休金準備呢？</label>
@@ -488,7 +489,7 @@
                     <div class="flex-grow overflow-y-auto pr-1 pb-4">
                         <div class="q-block !bg-green-50 !border-green-200">
                             <label class="q-label text-green-900">Q5. 目前您自己大概已經存了多少「可作為退休用」的資金呢？</label>
-                            <select id="r-q5" class="q-input !border-green-300"><option value="" disabled selected hidden>請選擇...</option><option value="200000">50萬以下</option><option value="1000000">大約 50–200萬</option><option value="3500000">大約 200–500萬</option><option value="7500000">大約 500–1000萬</option><option value="12000000">已經有 1000萬以上了</option><option value="0">其實我不太確定</option></select>
+                            <select id="r-q5" class="q-input !border-green-300"><option value="" disabled selected hidden>請選擇...</option><option value="200000">50萬以下</option><option value="1000000">大約 50–200萬</option><option value="3500000">大約 200–500萬</option><option value="7500000">大約 500–1000萬</option><option value="12000000">已經有 1000萬以上了</option><option value="0">我不確定</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q6. 您預計未來的退休收入，主要會從哪裡來？(可複選)</label>
@@ -502,11 +503,11 @@
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q7. 如果今天老闆突然叫您退休，生活費主要會靠哪一筆錢？</label>
-                            <select id="r-q7" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="勞保/勞退">只能靠政府的勞保/勞退</option><option value="投資或被動收入">靠我自己的投資或被動收入</option><option value="存款">吃老本(存款)</option><option value="家人支持">可能需要家人支持</option><option value="不確定">真的不知道怎麼辦</option></select>
+                            <select id="r-q7" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="勞保/勞退">政府的勞保/勞退</option><option value="投資或被動收入">投資或被動收入</option><option value="存款">現有存款</option><option value="家人支持">家人支持</option><option value="不確定">不知道怎麼辦</option></select>
                         </div>
                         <div class="q-block">
                             <label class="q-label">Q8. 整體來說，您覺得自己目前的退休準備進度如何？</label>
-                            <select id="r-q8" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="很充足">我覺得很充足，沒煩惱</option><option value="大致足夠">應該大致上足夠吧</option><option value="可能不足">好像可能有點不夠</option><option value="明顯不足">我覺得明顯不足，滿焦慮的</option><option value="不確定">因為沒算過，所以很不確定</option></select>
+                            <select id="r-q8" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="很充足">我準備的很充足</option><option value="大致足夠">應該夠</option><option value="可能不足">好像可能有點不夠</option><option value="明顯不足">明顯不足</option><option value="不確定">沒準備</option></select>
                         </div>
                     </div>
                 </div>
@@ -524,7 +525,7 @@
                             <i class="fas fa-file-signature text-2xl text-[#1E293B]"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-[#1E293B] tracking-wide">報告演算完成</h2>
-                        <p class="text-sm text-gray-500 mt-2">為確保您的專屬報告隱私，請驗證聯絡資訊以解鎖完整內容。</p>
+                        <p class="text-sm text-gray-500 mt-2">為確保您的專屬報告隱私，請填寫聯絡資訊以解鎖完整內容。</p>
                     </div>
                     
                     <div class="flex-grow overflow-y-auto pb-4">
