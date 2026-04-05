@@ -351,15 +351,39 @@
                             </select>
                             <input type="number" id="l-cus-amt" min="0" class="q-input mt-3 hidden !border-[#1E293B] !bg-blue-50" placeholder="請輸入自訂額度 (萬元)">
                         </div>
-                        <div class="q-block !bg-orange-50 !border-orange-200">
-                            <h3 class="text-lg font-bold text-orange-800 mb-3 text-center border-b border-orange-200 pb-2"><i class="fas fa-lightbulb"></i> 關鍵發想題</h3>
-                            <label class="q-label text-center leading-relaxed">憑直覺想一下，如果突然為家裡留下 <span class="text-2xl text-red-600 mx-1 font-black">1,000 萬</span> 現金<br>您覺得家人大約能撐多久？ <span class="text-red-500">*</span></label>
-                            <select id="l-anchor" class="q-input font-bold text-center !border-orange-400 text-orange-900">
-                                <option value="" disabled selected hidden>請憑直覺選擇...</option>
-                                <option value="3年內">大約 3 年以內吧</option><option value="3~5年">大約可以撐 3~5 年</option><option value="5~10年">大約可以撐 5~10 年</option><option value="可以撐很久">1000萬應該可以撐很久！</option>
-                            </select>
-                            <p id="validation-msg" class="error-msg text-center mt-3 bg-red-100 py-1 rounded">⚠️ 請完成上方所有選擇喔</p>
+                        <!-- ---【步驟一：重塑創意題質感與排版】--- -->
+                        <div class="q-block !bg-[#FFFBF5] !border-[#E8DCC8] relative overflow-hidden shadow-sm">
+                            <!-- 裝飾性背景圖示 (增加專業發想感) -->
+                            <i class="fas fa-quote-right absolute text-6xl text-orange-100 opacity-40 -top-2 -right-2 transform rotate-12"></i>
+                            
+                            <h3 class="text-md font-bold text-[#9A7B4F] mb-4 flex items-center border-b border-[#E8DCC8] pb-2 relative z-10">
+                                <i class="fas fa-lightbulb text-orange-400 mr-2 text-lg"></i> 顧問的關鍵發想題
+                            </h3>
+                            
+                            <div class="relative z-10">
+                                <p class="text-gray-600 font-bold mb-3 text-sm">憑直覺想一下，如果突然為家裡留下：</p>
+                                
+                                <!-- 運用 Flex 加上 whitespace-nowrap 徹底解決斷行問題，並做出「支票/存款餘額」的視覺感 -->
+                                <div class="bg-white border-2 border-orange-200 rounded-lg py-4 px-4 mb-5 flex items-center justify-center shadow-inner">
+                                    <span class="text-orange-400 font-black text-xl mr-2">$</span>
+                                    <span class="text-4xl font-black text-red-600 tracking-wider whitespace-nowrap drop-shadow-sm">1,000 萬</span>
+                                    <span class="text-gray-500 font-bold ml-2 mt-2">現金</span>
+                                </div>
+                                
+                                <label class="q-label text-[#1E293B]">這筆錢，您覺得家人大約能撐多久？ <span class="text-red-500">*</span></label>
+                                
+                                <!-- 移除 text-center，改用 text-left 讓選單靠左貼齊 -->
+                                <select id="l-anchor" class="q-input font-bold text-left !border-[#C5A880] text-[#1E293B] cursor-pointer">
+                                    <option value="" disabled selected hidden>請點擊選擇...</option>
+                                    <option value="3年內">大約 3 年以內吧</option>
+                                    <option value="3~5年">大約可以撐 3~5 年</option>
+                                    <option value="5~10年">大約可以撐 5~10 年</option>
+                                    <option value="可以撐很久">1000萬應該可以撐很久！</option>
+                                </select>
+                                <p id="validation-msg" class="error-msg text-center mt-3 bg-red-50 text-red-600 py-1.5 rounded-md border border-red-100">⚠️ 這是進入下一關的最後一題喔，請憑直覺選一個！</p>
+                            </div>
                         </div>
+                        <!-- ---------------------------------------- -->
                     </div>
                 </div>
                 <div class="action-buttons">
