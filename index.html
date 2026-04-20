@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>全方位財務健康診斷系統</title>
+    
+    <script>
+        (function() {
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            var isLine = (ua.indexOf('Line') > -1);
+            var isFB = (ua.indexOf('FBAN') > -1 || ua.indexOf('FBAV') > -1);
+            var isIG = (ua.indexOf('Instagram') > -1);
+            if (isLine) {
+                if (window.location.search.indexOf('openExternalBrowser=1') === -1) {
+                    var separator = window.location.search ? '&' : '?';
+                    window.location.href = window.location.href + separator + 'openExternalBrowser=1';
+                }
+            }
+            if (isLine || isFB || isIG) {
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById('in-app-warning').style.display = 'flex';
+                });
+            }
+        })();
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- 高級財富管理視覺風格 --- */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: #F7F6F2; font-family: "Microsoft JhengHei", sans-serif; color: #2C3E50; display: flex; flex-direction: column; }
+        
+        .main-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; padding: 1rem; position: relative; min-height: 0; }
+        .card-container { position: relative; width: 100%; max-width: 480px; height: 100%; margin: 0 auto; }
+        
+        .card { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; visibility: hidden; transform: translateY(10px); transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); background: #FFFFFF; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; border-top: 6px solid #1E293B; }
+        .card.active { opacity: 1; visibility: visible; transform: translateY(0); z-index: 10; }
+        
+        .card-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1.5rem; min-height: 0; background: #FFFFFF; }
+        .action-buttons { flex-shrink: 0; display: flex; gap: 0.75rem; padding: 1.25rem 1.5rem; background: #FDFDFD; border-top: 1px solid #EAEAEA; z-index: 20; }
+
+        .error-msg { color: #D93025; font-size: 0.8rem; margin-top: 0.4rem; display: none; font-weight: bold; }
+        .input-error { border-color: #D93025 !important; background-color: #FDF3F2 !important; box-shadow: 0 0 0 2px rgba(217,48,37,0.1) !important; }
+        .progress-bar { transition: width 0.6s ease; background-color: #C5A880; }
+        
+        .q-block { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.015); transition: border-color 0.3s; }
+        .q-block:hover { border-color: #C5A880; }
+        .q-label { font-weight: 700; color: #1E293B; font-size: 1rem; margin-bottom: 0.85rem; display: block; line-height: 1.5; letter-spacing: 0.5px; }
+        
+        .q-input { width: 100%; padding: 0.85rem 1rem; border: 1px solid #D1D5DB; border-radius: 6px; background: #FAFAFA; font-size: 1rem; color: #1E293B; outline: none; transition: all 0.3s; -webkit-appearance: none; appearance: none; }
+        .q-input:focus { border-color: #1E293B; background: #FFFFFF; box-shadow: 0 0 0 3px rgba(30, 41, 59, 0.1); }
+        select.q-input { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%231E293B' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.75rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; padding-right: 2.5rem; }
+
+        .chk-wrapper { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+        .chk-btn { display: inline-block; padding: 0.6rem 1.2rem; border: 1px solid #D1D5DB; border-radius: 6px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; color: #4B5563; background: #FFFFFF; user-select: none; }
+        input[type="checkbox"].hidden-chk:checked + .chk-btn, input[type="radio"].hidden-rad:checked + .chk-btn { background-color: #1E293B; border-color: #1E293B; color: #FFFFFF; font-weight: bold; box-shadow: 0 4px 10px rgba(30,41,59,0.15); }
+        input[type="checkbox"].hidden-chk, input[type="radio"].hidden-rad { display: none; }
+
+        .module-btn { border: 1px solid #E5E7EB; border-radius: 8px; padding: 1.25rem; display: flex; align-items: center; cursor: pointer; transition: all 0.3s; background: #FFFFFF; margin-bottom: 1rem; }
+        input[type="checkbox"].mod-chk:checked + .module-btn { border-color: #1E293B; background: #F8FAFC; box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08); }
+        .mod-icon { width: 48px; height: 48px; display: flex; justify-content: center; align-items: center; border-radius: 8px; font-size: 1.25rem; margin-right: 1rem; transition: all 0.3s; background: #F3F4F6; color: #9CA3AF; }
+        input[type="checkbox"].mod-chk:checked + .module-btn .mod-icon { background: #1E293B; color: #C5A880; }
+        .mod-title { font-weight: bold; color: #1E293B; font-size: 1.1rem; margin-bottom: 0.25rem; letter-spacing: 0.5px; }
+        .mod-desc { font-size: 0.85rem; color: #6B7280; line-height: 1.5;}
+        input[type="checkbox"].mod-chk { display: none; }
+
+        .locked-module { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 2rem 1rem; text-align: left; margin-bottom: 1.5rem; position: relative; overflow: hidden;}
+        .locked-icon { font-size: 2rem; color: #9CA3AF; margin-bottom: 1rem; position: relative; z-index: 1; display: block; text-align: center; }
+        .locked-title { font-size: 1.1rem; font-weight: bold; color: #4B5563; margin-bottom: 0.5rem; position: relative; z-index: 1; text-align: center; }
+        .locked-text { font-size: 0.85rem; color: #6B7280; position: relative; z-index: 1; line-height: 1.5; }
+
+        #report-content { scroll-behavior: smooth; background: #FFFFFF; padding-bottom: 2rem; min-height: 0; flex-grow: 1; overflow-y: auto; width: 100%; }
+        .chart-box { width: 100%; max-width: 100%; height: 260px !important; min-height: 260px !important; max-height: 260px !important; position: relative; margin: 0 auto; }
+        
+        .bg-blue-600 { background-color: #1E293B !important; }
+        .hover\:bg-blue-700:hover { background-color: #0F172A !important; }
+        .text-blue-600 { color: #1E293B !important; }
+        .bg-blue-100 { background-color: #E2E8F0 !important; }
+        .border-blue-100, .border-blue-200 { border-color: #E2E8F0 !important; }
+        .bg-blue-50 { background-color: #F8FAFC !important; }
+        .text-blue-900, .text-blue-800, .text-blue-700 { color: #1E293B !important; }
+        .rounded-xl, .rounded-2xl { border-radius: 8px !important; } 
+        
+        #pdf-overlay-container { position: fixed; top: 0; left: 100vw; width: 210mm; visibility: hidden; z-index: -9999; pointer-events: none; }
+        #pdf-template { width: 210mm; background-color: #ffffff; padding: 12mm 16mm; color: #000; font-family: "Microsoft JhengHei", sans-serif; box-sizing: border-box; margin: 0; }
+        .pdf-header { border-bottom: 3px solid #1E293B; padding-bottom: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .pdf-title h1 { font-size: 28px; font-weight: 900; color: #1E293B; letter-spacing: 2px; margin: 0; text-shadow: none; }
+        .pdf-title p { background-color: #F8FAFC; color: #475569; font-size: 11px; margin-top: 6px; font-weight: bold; letter-spacing: 3px; padding: 4px 10px; border-radius: 4px; display: inline-block; border: 1px solid #CBD5E1; }
+    </style>
+</head>
+<body>
+
+    <div id="in-app-warning" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-[9999999] hidden flex-col items-center pt-16 px-6 text-center">
+        <div class="animate-bounce mb-4 text-white text-4xl flex justify-end w-full pr-4"><i class="fas fa-arrow-up"></i></div>
+        <i class="fas fa-exclamation-triangle text-yellow-400 text-6xl mb-6"></i>
+        <h2 class="text-2xl font-bold text-white mb-4">請使用外部瀏覽器開啟</h2>
+        <p class="text-base text-gray-300 mb-6 leading-relaxed">您目前使用的是社群內建瀏覽器，<strong class="text-yellow-400">系統將無法為您下載專屬報告！</strong></p>
+        <div class="bg-gray-800 p-5 rounded-2xl border border-gray-700 text-left w-full max-w-sm shadow-lg">
+            <p class="text-white font-bold mb-3 text-lg border-b border-gray-600 pb-2">👉 解除步驟：</p>
+            <p class="text-gray-300 text-base mb-2">1. 點擊右上角的 <i class="fas fa-ellipsis-h mx-1 text-white"></i> 或 <i class="fas fa-external-link-alt mx-1 text-white"></i></p>
+            <p class="text-gray-300 text-base">2. 選擇 <strong class="text-blue-400">「以預設瀏覽器開啟」</strong></p>
+        </div>
+    </div>
+
+    <!-- 暖心個資聲明 -->
+    <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[99999] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl transform transition-all max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2">
+                <i class="fas fa-shield-alt mr-1"></i> 【個資蒐集與使用聲明】
+            </h3>
+            <div class="text-sm text-gray-700 space-y-4 leading-relaxed">
+                <p>為了提供您最精準的「專屬財務診斷報告」，我們需要收集您的基本聯絡方式與財務現況。請您放心，我們與您一樣重視隱私：</p>
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <p class="font-bold text-blue-800 mb-1">1. 用途絕對單純 🎯</p>
+                    <p class="text-xs text-gray-600">您的資料僅供「本次系統演算」及「專屬顧問後續聯繫與客製化解析」使用，絕不會用於其他無關之行銷。</p>
+                </div>
+                <div class="bg-green-50 p-3 rounded-lg border border-green-100">
+                    <p class="font-bold text-green-800 mb-1">2. 嚴格保密防護 🔒</p>
+                    <p class="text-xs text-gray-600">您的資訊將受到妥善保管，我們承諾【絕對不會】外流、交換或販售給任何第三方機構。</p>
+                </div>
+                <div class="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                    <p class="font-bold text-orange-800 mb-1">3. 保障您的權益 ⚖️</p>
+                    <p class="text-xs text-gray-600">依據個資法規定，您隨時有權向顧問要求查詢、補充、修改或「完全刪除」您的個人資料。</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('privacy-modal').style.display='none'" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md">
+                我已充分瞭解並同意
+            </button>
+        </div>
+    </div>
+
+    <!-- 聯絡顧問 Modal -->
+    <div id="contact-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[99999] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-8 shadow-2xl transform transition-all relative text-center border-t-8 border-[#00B900]">
+            <button onclick="document.getElementById('contact-modal').style.display='none'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl outline-none"><i class="fas fa-times-circle"></i></button>
+            <h2 class="text-2xl font-black text-gray-800 mb-2">專屬顧問一對一解析</h2>
+            <p class="text-sm text-gray-600 mb-6 font-bold leading-relaxed">報告中的數字只是第一步，讓我幫您梳理出最適合您的理財地圖！</p>
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-6 w-full shadow-inner mx-auto">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://line.me/R/ti/p/@704bzjfq" crossorigin="anonymous" class="w-48 h-48 mx-auto rounded-xl">
+                <p class="text-gray-700 mt-4 font-bold tracking-wide text-sm">LINE ID: 茵joy｜理財</p>
+            </div>
+            <a href="https://line.me/R/ti/p/@704bzjfq" class="w-full bg-[#00B900] hover:bg-[#00a000] text-white font-bold py-4 rounded-xl shadow-lg transition flex justify-center items-center text-lg">
+                <i class="fab fa-line text-2xl mr-2"></i> 立即加 LINE 預約
+            </a>
+        </div>
+    </div>
+
+    <!-- 進度條 -->
+    <div class="w-full bg-blue-100 h-2 flex-shrink-0 z-50"><div id="progress" class="bg-blue-600 h-2 w-0 progress-bar"></div></div>
+
+    <div class="main-wrapper">
+        <div class="card-container">
+            
+            <!-- Step 0: 高級邀請函首頁 -->
+            <div id="step-0" class="card active flex flex-col">
+                <div class="card-content flex flex-col justify-center text-center px-8">
+                    <div class="mb-8 flex justify-center space-x-6 text-[#C5A880]">
+                        <i class="fas fa-shield-alt text-4xl"></i>
+                        <i class="fas fa-heartbeat text-4xl"></i>
+                        <i class="fas fa-piggy-bank text-4xl"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-[#1E293B] mb-3 tracking-widest leading-snug">全方位<br>財務健康診斷</h1>
+                    <div class="w-12 h-1 bg-[#C5A880] mx-auto mb-8"></div>
+                    
+                    <div class="text-left text-gray-600 text-sm leading-relaxed mb-8 space-y-4">
+                        <p>我們常忙於事業與家庭，卻鮮少停下腳步，以客觀數據檢視自身的財務安全網。</p>
+                        <p>這套由專業顧問團隊設計的系統，將透過三大維度，為您建立一份專屬的「財務現況快照」。全程只需約 3 分鐘。</p>
+                    </div>
+                    <button onclick="goToStep(1)" class="w-full mt-auto bg-[#1E293B] hover:bg-[#0F172A] text-white font-bold py-4 rounded-lg transition text-lg tracking-wider shadow-md">開始檢視</button>
+                </div>
+            </div>
+
+            <!-- Step 1: 無壓力基本資料 -->
+            <div id="step-1" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-user-circle text-[#1E293B] mr-2"></i> 1. 基本資料</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">姓名/暱稱 <span class="text-red-500">*</span></label>
+                            <input type="text" id="user-name" class="q-input" placeholder="例如：茵茵">
+                            <p id="err-name" class="error-msg">請填寫姓名或暱稱</p>
+                        </div>
+                        <div class="flex space-x-3 mb-4">
+                            <div class="w-1/2 q-block !mb-0">
+                                <label class="q-label">年齡 <span class="text-red-500">*</span></label>
+                                <input type="number" id="user-age" min="0" class="q-input" placeholder="例如：35">
+                                <p id="err-age" class="error-msg">必填</p>
+                            </div>
+                            <div class="w-1/2 q-block !mb-0">
+                                <label class="q-label">婚姻 <span class="text-red-500">*</span></label>
+                                <select id="user-marriage" class="q-input">
+                                    <option value="" disabled selected hidden>請選擇</option>
+                                    <option value="已婚">已婚</option><option value="未婚">未婚</option>
+                                </select>
+                                <p id="err-marriage" class="error-msg">必選</p>
+                            </div>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">居住地 <span class="text-gray-400 text-xs font-normal ml-1">(教育金精算依據)</span> <span class="text-red-500">*</span></label>
+                            <select id="user-region" onchange="toggleOverseas()" class="q-input">
+                                <option value="" disabled selected hidden>請選擇居住縣市...</option>
+                                <option value="台北市">台北市</option><option value="新北市">新北市</option><option value="桃園市">桃園市</option><option value="台中市">台中市</option><option value="台南市">台南市</option><option value="高雄市">高雄市</option><option value="新竹市">新竹市</option><option value="新竹縣">新竹縣</option>
+                                <option value="其他">其他縣市 (含基苗彰投雲嘉屏宜花東外島)</option>
+                                <option value="海外">海外 / 旅居國外</option>
+                            </select>
+                            <p id="err-region" class="error-msg">請選擇居住地</p>
+                            <input type="number" id="custom-edu-cost" min="0" class="q-input mt-3 hidden" placeholder="預估單一小孩教育費(萬元)">
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="goToStep(0)" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button onclick="validateStep1()" class="w-2/3 bg-[#1E293B] hover:bg-[#0F172A] text-white font-bold py-3 rounded-lg transition shadow-md">下一步</button>
+                </div>
+            </div>
+
+            <!-- Step Module -->
+            <div id="step-module" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-2 border-b-2 border-gray-200 pb-2"><i class="fas fa-clipboard-check text-[#1E293B] mr-2"></i> 2. 財務診斷大廳</h2>
+                    <p class="text-sm text-gray-500 mb-4 font-bold">今天想先幫自己檢視哪個防護網呢？ (可複選) <span class="text-red-500">*</span></p>
+                    
+                    <div class="flex-grow overflow-y-auto pr-1">
+                        <label class="block">
+                            <input type="checkbox" class="mod-chk" id="mod-life" value="life" checked onchange="updateModTip()">
+                            <div class="module-btn">
+                                <div class="mod-icon"><i class="fas fa-shield-alt"></i></div>
+                                <div>
+                                    <div class="mod-title">家庭責任 (壽險缺口)</div>
+                                    <div class="mod-desc">如果您是家裡的經濟支柱，這能幫您精算真實的資金責任。</div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="block">
+                            <input type="checkbox" class="mod-chk" id="mod-medical" value="medical" onchange="updateModTip()">
+                            <div class="module-btn">
+                                <div class="mod-icon"><i class="fas fa-heartbeat"></i></div>
+                                <div>
+                                    <div class="mod-title">醫療防護 (重大疾病)</div>
+                                    <div class="mod-desc">評估萬一發生重大疾病，您的防護與存款是否扛得住。</div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="block">
+                            <input type="checkbox" class="mod-chk" id="mod-retirement" value="retirement" onchange="updateModTip()">
+                            <div class="module-btn">
+                                <div class="mod-icon"><i class="fas fa-piggy-bank"></i></div>
+                                <div>
+                                    <div class="mod-title">樂活退休 (退休金)</div>
+                                    <div class="mod-desc">趁早精算理想退休生活所需的資金，與您目前的準備進度。</div>
+                                </div>
+                            </div>
+                        </label>
+                        <p id="err-module" class="error-msg text-center text-base py-2 bg-red-50 rounded-lg">⚠️ 請至少選擇一個模組</p>
+                        <!-- 動態建議提示 -->
+                        <div id="mod-select-tip" class="mt-3 rounded-xl p-3 text-xs text-center font-bold bg-amber-50 border border-amber-200 text-amber-800">
+                            💡 建議三種都選，才能獲得完整的財務健康診斷報告
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="goToStep(1)" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button onclick="buildFlow()" class="w-2/3 bg-[#1E293B] hover:bg-[#0F172A] text-white font-bold py-3 rounded-lg transition shadow-md">開始測驗 <i class="fas fa-play ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Life 1 -->
+            <div id="step-life-1" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-users text-[#1E293B] mr-2"></i> [壽險] 家庭責任</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">Q1. 目前有哪些家人是需要依靠您收入的？(可複選)</label>
+                            <div class="chk-wrapper">
+                                <label><input type="checkbox" class="hidden-chk" id="l-dep-spouse" onchange="tDep()"><span class="chk-btn">配偶</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-dep-child" onchange="tKids(); tDep()"><span class="chk-btn">小孩</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-dep-parent" onchange="tDep()"><span class="chk-btn">父母</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-dep-none" onchange="tDepNone()"><span class="chk-btn">目前沒有</span></label>
+                            </div>
+                        </div>
+                        <div id="l-kids-sec" class="q-block hidden !bg-blue-50">
+                            <label class="q-label text-[#1E293B]">了解了，那請您設定一下小孩的人數與年齡：</label>
+                            <div class="flex items-center mb-2">
+                                <span class="text-sm font-bold text-gray-700 w-16">人數:</span>
+                                <select id="l-kids-cnt" onchange="rKids()" class="q-input w-20 py-1.5 px-3 text-center font-bold text-[#1E293B]"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select>
+                            </div>
+                            <div id="l-kids-ages" class="space-y-2"></div>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q2. 您算是家庭的主要經濟來源嗎？</label>
+                            <div class="chk-wrapper">
+                                <label><input type="radio" class="hidden-rad" name="l-inc" value="主要是我" checked><span class="chk-btn">主要是我</span></label>
+                                <label><input type="radio" class="hidden-rad" name="l-inc" value="主要是配偶"><span class="chk-btn">主要是配偶</span></label>
+                                <label><input type="radio" class="hidden-rad" name="l-inc" value="共同負擔"><span class="chk-btn">我們共同負擔</span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateLife1)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Life 2 -->
+            <div id="step-life-2" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-wallet text-[#1E293B] mr-2"></i> [壽險] 財務盤點</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label text-red-800">Q3. 您家裡「每個月」的基本開銷大約是多少？ <span class="text-red-500">*</span></label>
+                            <p class="text-xs text-red-600 mb-3">包含食衣住行、孝親費等，系統待會會幫您自動加計 2% 通膨。</p>
+                            <div class="flex items-center"><input type="number" id="l-exp" min="0" class="q-input font-bold text-red-700"><span class="ml-3 font-bold text-gray-700 w-12">萬元</span></div>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q4. 目前是否有還在持續償還的貸款？</label>
+                            <div class="chk-wrapper">
+                                <label><input type="checkbox" class="hidden-chk" id="l-ln-house" onchange="tLoan('o')"><span class="chk-btn">有房貸</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-ln-car" onchange="tLoan('o')"><span class="chk-btn">有車貸</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-ln-other" onchange="tLoan('o')"><span class="chk-btn">有信貸/其他</span></label>
+                                <label><input type="checkbox" class="hidden-chk" id="l-ln-none" onchange="tLoan('n')"><span class="chk-btn">目前無貸款</span></label>
+                            </div>
+                            <div id="l-ln-amt-box" class="hidden mt-3 flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <span class="text-sm font-bold text-gray-700 whitespace-nowrap mr-2">目前總餘額大約:</span><input type="number" id="l-ln-amt" min="0" class="q-input !py-1.5"><span class="ml-2 font-bold text-gray-600">萬元</span>
+                            </div>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label text-green-800">Q5. 家庭目前隨時可動用的存款 / 投資約有多少？ <span class="text-red-500">*</span></label>
+                            <div class="flex items-center"><input type="number" id="l-sav" min="0" class="q-input font-bold text-green-700"><span class="ml-3 font-bold text-gray-700 w-12">萬元</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateLife2)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Life 3 -->
+            <div id="step-life-3" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-shield-alt text-[#1E293B] mr-2"></i> [壽險] 防護定錨</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">Q6. 說實話，您清楚自己目前大概有多少「壽險」額度嗎？</label>
+                            <select id="l-exist" onchange="tLifeCus()" class="q-input">
+                                <option value="" disabled selected hidden>請選擇...</option>
+                                <option value="0">沒有買壽險</option><option value="200">有，但大概 200萬以下</option><option value="500">有，約 200~500萬</option>
+                                <option value="1000">有，約 500~1000萬</option><option value="1500">有，1000萬以上</option>
+                                <option value="custom" class="font-bold text-[#1E293B]">✍️ 我知道自己的精準額度</option><option value="unsure" class="text-red-500">有買，但不確定額度</option>
+                            </select>
+                            <input type="number" id="l-cus-amt" min="0" class="q-input mt-3 hidden !border-[#1E293B] !bg-blue-50" placeholder="請輸入自訂額度 (萬元)">
+                        </div>
+                        <!-- ---【步驟一：重塑創意題質感與排版】--- -->
+                        <div class="q-block !bg-[#FFFBF5] !border-[#E8DCC8] relative overflow-hidden shadow-sm">
+                            <!-- 裝飾性背景圖示 (增加專業發想感) -->
+                            <i class="fas fa-quote-right absolute text-6xl text-orange-100 opacity-40 -top-2 -right-2 transform rotate-12"></i>
+                            
+                            <h3 class="text-md font-bold text-[#9A7B4F] mb-4 flex items-center border-b border-[#E8DCC8] pb-2 relative z-10">
+                                <i class="fas fa-lightbulb text-orange-400 mr-2 text-lg"></i> 顧問的關鍵發想題
+                            </h3>
+                            
+                            <div class="relative z-10">
+                                <p class="text-gray-600 font-bold mb-3 text-sm">憑直覺想一下，如果突然為家裡留下：</p>
+                                
+                                <!-- 運用 Flex 加上 whitespace-nowrap 徹底解決斷行問題，並做出「支票/存款餘額」的視覺感 -->
+                                <div class="bg-white border-2 border-orange-200 rounded-lg py-4 px-4 mb-5 flex items-center justify-center shadow-inner">
+                                    <span class="text-orange-400 font-black text-xl mr-2">$</span>
+                                    <span class="text-4xl font-black text-red-600 tracking-wider whitespace-nowrap drop-shadow-sm">1,000 萬</span>
+                                    <span class="text-gray-500 font-bold ml-2 mt-2">現金</span>
+                                </div>
+                                
+                                <label class="q-label text-[#1E293B]">這筆錢，您覺得家人大約能撐多久？ <span class="text-red-500">*</span></label>
+                                
+                                <!-- 移除 text-center，改用 text-left 讓選單靠左貼齊 -->
+                                <select id="l-anchor" class="q-input font-bold text-left !border-[#C5A880] text-[#1E293B] cursor-pointer">
+                                    <option value="" disabled selected hidden>請點擊選擇...</option>
+                                    <option value="3年內">大約 3 年以內</option>
+                                    <option value="3~5年">大約可以撐 3~5 年</option>
+                                    <option value="5~10年">大約可以撐 5~10 年</option>
+                                    <option value="可以撐很久">應該可以撐10年以上</option>
+                                </select>
+                                <p id="validation-msg" class="error-msg text-center mt-3 bg-red-50 text-red-600 py-1.5 rounded-md border border-red-100">⚠️ 這是進入下一關的最後一題喔，請憑直覺選一個！</p>
+                            </div>
+                        </div>
+                        <!-- ---------------------------------------- -->
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateLife3)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Medical 1 -->
+            <div id="step-med-1" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-2 border-b-2 border-gray-200 pb-2"><i class="fas fa-procedures text-[#1E293B] mr-2"></i> [醫療] 保障盤點</h2>
+                    <p class="text-xs text-gray-500 mb-4 font-bold">如果突然生一場病，您的醫療費準備好了嗎？</p>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">Q1. 目前是否有幫自己規劃醫療相關保險？</label>
+                            <select id="m-q1" onchange="mQ1Check()" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="0">有</option></select>
+                        </div>
+                        <div class="q-block" id="m-q2-box">
+                            <label class="q-label">Q2. 那您清楚自己手上有哪些醫療保障嗎？</label>
+                            <select id="m-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="0">我很清楚</option><option value="1">大概知道一些</option><option value="2">不清楚</select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q3. 是否有「癌症」相關保障？</label>
+                            <select id="m-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="2">有，但不確定是哪一種</option><option value="1">有，一次性給付一筆錢</option><option value="0">有，一次性給付跟後續療程都有</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q4. 是否有「重大疾病/重大傷病」保障？</label>
+                            <select id="m-q4" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">沒有</option><option value="0">有</option><option value="2">不確定</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateMed1)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Medical 2 -->
+            <div id="step-med-2" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-heartbeat text-[#1E293B] mr-2"></i> [醫療] 壓力測試</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">Q5. 如果需要自費醫療(在還沒拿到理賠前)，您目前大約能立刻拿出多少錢負擔？</label>
+                            <select id="m-q5" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="3">10萬以下</option><option value="2">大概 10–50萬</option><option value="1">大概 50–100萬</option><option value="0">100萬以上</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q6. 如果真的需要住院動手術，您心裡最擔心的是什麼事？</label>
+                            <select id="m-q6" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="2">龐大的醫療費用</option><option value="1">沒辦法工作導致收入中斷</option><option value="1.1">沒人照顧家庭或小孩</option><option value="0">我不擔心</option></select>
+                        </div>
+                        <div class="q-block !bg-red-50 !border-red-200">
+                            <label class="q-label text-red-900">Q7. 如果生一場大病，需要馬上拿出 200萬 的自費，您覺得目前的準備狀態是？</label>
+                            <select id="m-q7" class="q-input !border-red-300"><option value="" disabled selected hidden>請選擇...</option><option value="0">保險額度夠，不用動到存款</option><option value="1">保險理賠加上部分存款應該夠</option><option value="2">可能需要動用到我大部分的存款</option><option value="3">目前沒有準備這麼大筆金額</option><option value="2.1">我不確定目前的準備夠不夠</option></select>
+                        </div>
+                        <div class="q-block !bg-orange-50 !border-orange-200">
+                            <label class="q-label text-orange-900">Q8. 如果因為生病需要停工 1 年好好休養，家裡的生活費大約能維持多久？</label>
+                            <select id="m-q8" class="q-input !border-orange-300"><option value="" disabled selected hidden>請選擇...</option><option value="3">1~3個月</option><option value="2">大約半年</option><option value="1">大約 1 年左右</option><option value="0">2年以上</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateMed2)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Retirement 1 -->
+            <div id="step-ret-1" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-2 border-b-2 border-gray-200 pb-2"><i class="fas fa-umbrella-beach text-[#1E293B] mr-2"></i> [退休] 目標設定</h2>
+                    <p class="text-xs text-gray-500 mb-4 font-bold">退休不是某一天突然發生，而是需要提前準備。用 3 分鐘看看您的進度！</p>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block">
+                            <label class="q-label">Q1. 您心裡預計幾歲要退休呢？</label>
+                            <select id="r-q1" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="55">55歲以前</option><option value="60">大約 56–60歲</option><option value="65">大約 61–65歲</option><option value="68">66歲以上</option><option value="65.1">沒想過這個問題</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q2. 您希望退休後「每個月」能有多少錢可以花？(相當於現在的物價)</label>
+                            <select id="r-q2" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="30000">3萬以下</option><option value="40000">3–5萬</option><option value="65000">5–8萬</option><option value="90000">8–10萬</option><option value="120000">10萬以上</option><option value="50000">沒算過</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q3. 您現在有開始為了退休，做一些專門的儲蓄或投資嗎？</label>
+                            <select id="r-q3" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="沒有">還沒開始</option><option value="有，但不固定">有，想到才做，不一定</option><option value="有固定">有固定儲蓄或投資</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q4. 如果有的話，目前平均「每個月」大約提撥多少錢作為退休金準備呢？</label>
+                            <select id="r-q4" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="0">目前沒有</option><option value="2000">大約 3,000 以下</option><option value="6000">大約 3,000–1萬</option><option value="20000">大約 1萬–3萬</option><option value="40000">3萬以上</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateRet1)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Retirement 2 -->
+            <div id="step-ret-2" class="card flex flex-col">
+                <div class="card-content flex flex-col">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b-2 border-gray-200 pb-2"><i class="fas fa-piggy-bank text-[#1E293B] mr-2"></i> [退休] 資源盤點</h2>
+                    <div class="flex-grow overflow-y-auto pr-1 pb-4">
+                        <div class="q-block !bg-green-50 !border-green-200">
+                            <label class="q-label text-green-900">Q5. 目前您自己大概已經存了多少「可作為退休用」的資金呢？</label>
+                            <select id="r-q5" class="q-input !border-green-300"><option value="" disabled selected hidden>請選擇...</option><option value="200000">50萬以下</option><option value="1000000">大約 50–200萬</option><option value="3500000">大約 200–500萬</option><option value="7500000">大約 500–1000萬</option><option value="12000000">已經有 1000萬以上了</option><option value="0">我不確定</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q6. 您預計未來的退休收入，主要會從哪裡來？(可複選)</label>
+                            <div class="chk-wrapper">
+                                <label><input type="checkbox" class="hidden-chk r-q6-chk" value="勞保/勞退"><span class="chk-btn">勞保/勞退</span></label>
+                                <label><input type="checkbox" class="hidden-chk r-q6-chk" value="投資收入"><span class="chk-btn">股票/基金等投資</span></label>
+                                <label><input type="checkbox" class="hidden-chk r-q6-chk" value="租金收入"><span class="chk-btn">收房租</span></label>
+                                <label><input type="checkbox" class="hidden-chk r-q6-chk" value="保險年金"><span class="chk-btn">保險的還本金</span></label>
+                                <label><input type="checkbox" class="hidden-chk r-q6-chk" value="不確定"><span class="chk-btn">目前還不確定</span></label>
+                            </div>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q7. 如果今天老闆突然叫您退休，生活費主要會靠哪一筆錢？</label>
+                            <select id="r-q7" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="勞保/勞退">政府的勞保/勞退</option><option value="投資或被動收入">投資或被動收入</option><option value="存款">現有存款</option><option value="家人支持">家人支持</option><option value="不確定">不知道怎麼辦</option></select>
+                        </div>
+                        <div class="q-block">
+                            <label class="q-label">Q8. 整體來說，您覺得自己目前的退休準備進度如何？</label>
+                            <select id="r-q8" class="q-input"><option value="" disabled selected hidden>請選擇...</option><option value="很充足">我準備的很充足</option><option value="大致足夠">應該夠</option><option value="可能不足">好像可能有點不夠</option><option value="明顯不足">明顯不足</option><option value="不確定">沒準備</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">上一步</button>
+                    <button class="w-2/3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 rounded-lg transition shadow-md btn-next" onclick="nextDynamic(validateRet2)">下一步 <i class="fas fa-arrow-right ml-1"></i></button>
+                </div>
+            </div>
+
+            <!-- Step Lead: 高轉換率名單收集頁 -->
+            <div id="step-lead" class="card flex flex-col">
+                <div class="card-content flex flex-col px-6">
+                    <div class="text-center mb-6 mt-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#F8FAFC] border-2 border-[#1E293B] mb-4">
+                            <i class="fas fa-file-signature text-2xl text-[#1E293B]"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-[#1E293B] tracking-wide">報告演算完成</h2>
+                        <p class="text-sm text-gray-500 mt-2">為確保您的專屬報告隱私，請填寫聯絡資訊以解鎖完整內容。</p>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto pb-4">
+                        <div class="q-block !bg-white">
+                            <label class="q-label text-sm">行動電話 <span class="text-red-500">*</span></label>
+                            <input type="tel" id="user-phone" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" class="q-input" placeholder="09xxxxxxxx">
+                            <p id="err-phone" class="error-msg">請填寫正確的 10 碼手機號碼</p>
+                        </div>
+                        <div class="q-block !bg-white">
+                            <label class="q-label text-sm">LINE ID <span class="text-gray-400 font-normal ml-1">(由顧問親自傳送報告)</span> <span class="text-red-500">*</span></label>
+                            <input type="text" id="user-line" class="q-input" placeholder="請輸入ID">
+                            <p id="err-line" class="error-msg">請填寫 LINE ID</p>
+                        </div>
+                        <div class="q-block !bg-white">
+                            <label class="q-label text-sm">電子信箱 <span class="text-red-500">*</span></label>
+                            <input type="email" id="user-email" class="q-input" placeholder="請輸入 Email">
+                            <p id="err-email" class="error-msg">請填寫正確的 E-mail 格式</p>
+                        </div>
+                        <div class="mt-4 px-2">
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox" id="privacy-consent" class="mt-1 mr-3 w-4 h-4 rounded border-gray-300">
+                                <span class="text-xs text-gray-500 leading-relaxed font-normal">
+                                    我已詳閱並同意<a href="#" class="text-[#1E293B] font-bold underline" onclick="event.preventDefault(); document.getElementById('privacy-modal').style.display='flex';">個資保護聲明</a>，允許系統解鎖報告並由專屬顧問聯繫。
+                                </span>
+                            </label>
+                            <p id="err-privacy" class="error-msg text-center mt-2">⚠️ 必須勾選同意才能解鎖報告</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button onclick="prevDynamic()" class="w-1/3 bg-white border border-gray-300 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-50 transition">返回</button>
+                    <button class="w-2/3 bg-[#1E293B] hover:bg-[#0F172A] text-white font-bold py-3 rounded-lg transition shadow-md tracking-wide" onclick="nextDynamic(validateLead)"><i class="fas fa-lock text-sm mr-1"></i> 安全解鎖</button>
+                </div>
+            </div>
+
+            <!-- Step Result: 結果報告頁 -->
+            <div id="step-result" class="card p-0 flex flex-col">
+                <div id="report-content">
+                    <div class="bg-gradient-to-br from-[#1E293B] to-[#2D3F55] px-5 pt-6 pb-5 mb-5 rounded-b-2xl shadow-md">
+                        <div class="mb-3">
+                            <p class="text-[#C5A880] text-xs font-bold tracking-widest uppercase mb-1">財務健康診斷報告</p>
+                            <h1 class="text-2xl font-black text-white leading-tight">全方位財務<br>健康診斷</h1>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-gray-300 pt-3 border-t border-white/10">
+                            <span>👤 <span id="ui-name" class="text-white font-bold">--</span></span>
+                            <span class="text-white/30">|</span>
+                            <span>年紀 <span id="ui-age" class="text-white font-bold">--</span></span>
+                            <span class="text-white/30">|</span>
+                            <span id="ui-date" class="text-gray-400">--</span>
+                        </div>
+                    </div>
+
+                    <!-- 統一雷達圖與整體評估 -->
+                    <div class="mx-4 mb-4" id="unified-radar-section">
+                        <h2 class="text-lg font-bold text-[#1E293B] border-l-4 border-[#C5A880] pl-2 mb-3 bg-gray-50 py-1 rounded-r-lg">📊 整體財務健康雷達圖</h2>
+                        <div class="bg-[#F8FAFC] p-3 rounded-xl border border-gray-200">
+                            <div class="chart-box"><canvas id="uiRadarChart"></canvas></div>
+                            <div id="radar-incomplete-note" class="text-xs text-gray-500 text-left mt-2 hidden leading-relaxed"></div>
+                        </div>
+                        <div id="res-overall-summary" class="mt-3"></div>
+                    </div>
+
+                    <div class="mx-4 mb-6">
+                        <h2 class="text-lg font-bold text-[#1E293B] border-l-4 border-[#C5A880] pl-2 mb-3 bg-gray-50 py-1 rounded-r-lg">🛡️ 家庭責任防護</h2>
+                        <div id="res-life-content"></div>
+                    </div>
+
+                    <div class="mx-4 mb-6">
+                        <h2 class="text-lg font-bold text-[#1E293B] border-l-4 border-[#C5A880] pl-2 mb-3 bg-gray-50 py-1 rounded-r-lg">🏥 醫療與重疾防護</h2>
+                        <div id="res-med-content"></div>
+                    </div>
+
+                    <div class="mx-4 mb-6">
+                        <h2 class="text-lg font-bold text-[#1E293B] border-l-4 border-[#C5A880] pl-2 mb-3 bg-gray-50 py-1 rounded-r-lg">🏖️ 樂活退休精算</h2>
+                        <div id="res-ret-content"></div>
+                    </div>
+
+                    <div class="report-conclusion mx-4 bg-[#F8FAFC] p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-bold text-[#1E293B] mb-2 border-b border-gray-200 pb-2">💡 顧問解析與總結</h3>
+                        <p id="ui-conclusion-text" class="text-sm text-gray-700 leading-relaxed"></p>
+                    </div>
+
+                    <div class="text-center mt-6">
+                        <button onclick="location.reload()" class="text-gray-400 text-sm hover:text-gray-600 underline font-bold"><i class="fas fa-redo mr-1"></i>重新測驗</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button onclick="downloadPDF(this)" class="flex-1 bg-white border border-[#1E293B] text-[#1E293B] font-bold py-3 rounded-lg hover:bg-gray-50 flex flex-col items-center justify-center transition shadow-sm">
+                        <span id="btn-dl-text" class="text-sm"><i class="fas fa-file-pdf mr-1 text-red-500"></i> 匯出報告</span>
+                    </button>
+                    <button onclick="document.getElementById('contact-modal').style.display='flex';" class="flex-1 bg-[#1E293B] hover:bg-[#0F172A] text-white font-bold py-3 rounded-lg shadow-md flex flex-col items-center justify-center transition">
+                        <span class="text-sm"><i class="fab fa-line mr-1 text-lg"></i> 預約專屬解析</span>
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- PDF Loading Overlay -->
+    <div id="full-loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(247, 246, 242, 0.95); z-index: 9999999; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <i class="fas fa-spinner fa-spin text-[#1E293B] text-6xl mb-4 shadow-sm rounded-full"></i>
+        <h2 class="text-2xl font-bold text-[#1E293B] tracking-wider">專屬報告生成中...</h2>
+        <p class="text-sm text-gray-500 mt-2 font-bold">請稍候，正在為您準備資料</p>
+    </div>
+
+    <!-- PDF Template -->
+    <div id="pdf-overlay-container">
+        <div id="pdf-template">
+            <div class="pdf-header">
+                <div class="pdf-title">
+                    <h1>全方位財務健康診斷</h1>
+                    <p>人生三大風險鐵三角</p>
+                </div>
+                <div class="pdf-meta">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 3px;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>姓</span><span>名</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-name">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 3px;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>年</span><span>紀</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-age">--</span>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; width: 55px; color: #666;"><span>填</span><span>表</span><span>日</span><span>期</span></div>
+                        <span style="margin: 0 4px; color: #666;">：</span><span style="font-weight: bold; color: #111; width: 80px; text-align: left;" id="pdf-date">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pdf-content-blocks" style="flex-grow: 1; display:flex; flex-direction:column; gap:10px;"></div>
+
+            <div style="background: #F8FAFC; border-left: 4px solid #1E293B; padding: 10px 15px; margin-top: auto; margin-bottom: 10px; border-radius: 6px;">
+                <h3 style="color: #1E293B; font-size: 13px; margin-bottom: 4px; font-weight: bold;">💡 專業顧問總結</h3>
+                <p id="pdf-conclusion-text" style="font-size: 11px; color: #333; line-height: 1.5; margin: 0;"></p>
+            </div>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 9px; color: #9ca3af; max-width: 75%; line-height: 1.4;">
+                    本報告依據客觀數據試算。實際規劃與理賠條款，請預約諮詢專屬顧問以獲取客製化建議。
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 12px; color: #1E293B; margin-top: 2px; font-weight: bold; padding: 5px; border: 1px solid #1E293B; border-radius: 4px;">由專屬顧問提供報告</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Javascript 邏輯大腦 -->
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbw841AW8ZoegM1HSAjjo9axjYypMvKBIgITk5nClWxi2Z8QXjSBJOWmJOd8nTWcKnAeUQ/exec'; 
+
+        let flowArr = ['step-0', 'step-1', 'step-module'];
+        let cIdx = 0;
+        let uiChart = null, pdfChart = null, radarDims = null;
+        
+        let mData = { life: false, med: false, ret: false };
+        let payload = {};
+        let repHTML = { life: '', med: '', ret: '', pdfLife: '', pdfMed: '', pdfRet: '' };
+
+        const eduBaseMap = { '台北市': 350, '新北市': 300, '桃園市': 300, '台中市': 300, '台南市': 250, '高雄市': 250, '新竹市': 300, '新竹縣': 300, '其他': 200 };
+        const getEduBase = (c) => eduBaseMap[c] !== undefined ? eduBaseMap[c] : 200;
+
+        function scrollToTop(id) {
+            const el = document.getElementById(id);
+            if(el) {
+                const sArea = el.querySelector('.card-content') || el.querySelector('#report-content');
+                if(sArea) sArea.scrollTop = 0;
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function goToStep(idx) {
+            if(document.getElementById(flowArr[cIdx])) document.getElementById(flowArr[cIdx]).classList.remove('active');
+            cIdx = idx;
+            document.getElementById(flowArr[cIdx]).classList.add('active');
+            document.getElementById('progress').style.width = `${(cIdx/(flowArr.length-1))*100}%`;
+            scrollToTop(flowArr[cIdx]);
+        }
+
+        function nextDynamic(validateFn) { 
+            if(validateFn()) {
+                if (flowArr[cIdx + 1] === 'step-result') {
+                    calculateAndSubmit();
+                } else {
+                    goToStep(cIdx + 1); 
+                }
+            } 
+        }
+        
+        function prevDynamic() { goToStep(cIdx - 1); }
+
+        function checkF(id) {
+            const el = document.getElementById(id);
+            if(!el.value.trim()) { el.classList.add('input-error'); document.getElementById(`err-${id.split('-')[1]}`).style.display='block'; return false; }
+            el.classList.remove('input-error'); document.getElementById(`err-${id.split('-')[1]}`).style.display='none'; return true;
+        }
+
+        function validateStep1() {
+            let v = checkF('user-name') & checkF('user-age') & checkF('user-marriage') & checkF('user-region');
+            if(v) goToStep(cIdx + 1);
+        }
+
+        function toggleOverseas() { 
+            document.getElementById('custom-edu-cost').style.display = (document.getElementById('user-region').value === '海外') ? 'block' : 'none'; 
+        }
+
+        function validateLead() {
+            let v = checkF('user-line');
+            const ph = document.getElementById('user-phone');
+            if(!/^09\d{8}$/.test(ph.value.trim())) { ph.classList.add('input-error'); document.getElementById('err-phone').style.display='block'; v=false; } else { ph.classList.remove('input-error'); document.getElementById('err-phone').style.display='none'; }
+            const em = document.getElementById('user-email');
+            if(!em.value.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.value.trim())) { em.classList.add('input-error'); document.getElementById('err-email').style.display='block'; v=false; } else { em.classList.remove('input-error'); document.getElementById('err-email').style.display='none'; }
+            if(!document.getElementById('privacy-consent').checked) { document.getElementById('err-privacy').style.display='block'; v=false; } else { document.getElementById('err-privacy').style.display='none'; }
+            return v; 
+        }
+
+        // 模組選擇頁：動態建議提示
+        function updateModTip() {
+            var n = [document.getElementById('mod-life'), document.getElementById('mod-medical'), document.getElementById('mod-retirement')]
+                        .filter(function(el){ return el && el.checked; }).length;
+            var tip = document.getElementById('mod-select-tip');
+            if(!tip) return;
+            if(n === 0) {
+                tip.className = 'mt-3 rounded-xl p-3 text-xs text-center font-bold bg-red-50 border border-red-200 text-red-700';
+                tip.innerHTML = '⚠️ 請至少選擇一個模組';
+            } else if(n === 1) {
+                tip.className = 'mt-3 rounded-xl p-3 text-xs text-center font-bold bg-amber-50 border border-amber-200 text-amber-800';
+                tip.innerHTML = '⚠️ 只選1個模組，有 2 個風險區塊會被遺漏，建議三種都勾選';
+            } else if(n === 2) {
+                tip.className = 'mt-3 rounded-xl p-3 text-xs text-center font-bold bg-blue-50 border border-blue-200 text-blue-700';
+                tip.innerHTML = '👍 再加一個模組，即可獲得完整的三維度財務健診報告！';
+            } else {
+                tip.className = 'mt-3 rounded-xl p-3 text-xs text-center font-bold bg-green-50 border border-green-200 text-green-700';
+                tip.innerHTML = '✅ 三大模組全選！診斷最完整，報告最精準';
+            }
+        }
+
+        // 結果頁：補做指定模組（直接跳到該模組問卷，完成後重新計算結果）
+        function quickUnlock(module) {
+            mData[module] = true;
+            // 勾選對應 checkbox
+            var chkMap = { life:'mod-life', med:'mod-medical', ret:'mod-retirement' };
+            var chk = document.getElementById(chkMap[module]);
+            if(chk) chk.checked = true;
+
+            // 取得該模組的問卷步驟
+            var stepsMap = {
+                life: ['step-life-1','step-life-2','step-life-3'],
+                med:  ['step-med-1','step-med-2'],
+                ret:  ['step-ret-1','step-ret-2']
+            };
+            var newSteps = stepsMap[module];
+
+            // 從 flowArr 移除 step-lead 和 step-result（已完成的不重做）
+            ['step-lead','step-result'].forEach(function(s){
+                var i = flowArr.indexOf(s); if(i >= 0) flowArr.splice(i,1);
+            });
+            // 移除此模組若已在 flowArr 中
+            newSteps.forEach(function(s){ var i=flowArr.indexOf(s); if(i>=0) flowArr.splice(i,1); });
+            // 將新模組步驟 + step-result 加到末尾（skip step-lead，已填過）
+            flowArr = flowArr.concat(newSteps).concat(['step-result']);
+
+            // 捲到最上方再跳步驟
+            window.scrollTo(0,0);
+            goToStep(flowArr.indexOf(newSteps[0]));
+        }
+
+        function buildFlow() {
+            mData.life = document.getElementById('mod-life').checked;
+            mData.med = document.getElementById('mod-medical').checked;
+            mData.ret = document.getElementById('mod-retirement').checked;
+
+            if(!mData.life && !mData.med && !mData.ret) { document.getElementById('err-module').style.display='block'; return; }
+            document.getElementById('err-module').style.display='none';
+
+            flowArr = ['step-0', 'step-1', 'step-module'];
+            if(mData.life) flowArr.push('step-life-1', 'step-life-2', 'step-life-3');
+            if(mData.med) flowArr.push('step-med-1', 'step-med-2');
+            if(mData.ret) flowArr.push('step-ret-1', 'step-ret-2');
+            
+            flowArr.push('step-lead', 'step-result');
+            
+            document.querySelectorAll('.btn-next').forEach(btn => {
+                btn.innerHTML = '下一步 <i class="fas fa-arrow-right ml-1"></i>';
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-gray-800', 'hover:bg-gray-900');
+            });
+
+            let lastModuleId = flowArr[flowArr.length - 3]; 
+            let lastBtn = document.querySelector(`#${lastModuleId} .btn-next`);
+            if(lastBtn) {
+                lastBtn.innerHTML = '完成填寫，前往結算 <i class="fas fa-check-circle ml-1"></i>';
+                lastBtn.classList.remove('bg-gray-800', 'hover:bg-gray-900');
+                lastBtn.classList.add('bg-[#1E293B]', 'hover:bg-[#0F172A]');
+            }
+            
+            goToStep(3);
+        }
+
+        function tDepNone() { if(document.getElementById('l-dep-none').checked) { ['l-dep-spouse','l-dep-child','l-dep-parent'].forEach(id=>document.getElementById(id).checked=false); tKids(); } }
+        function tDep() { if(document.getElementById('l-dep-spouse').checked || document.getElementById('l-dep-child').checked || document.getElementById('l-dep-parent').checked) document.getElementById('l-dep-none').checked=false; }
+        function tKids() { document.getElementById('l-kids-sec').style.display = document.getElementById('l-dep-child').checked ? 'block' : 'none'; if(document.getElementById('l-dep-child').checked && document.getElementById('l-kids-ages').innerHTML==='') rKids(); }
+        function rKids() {
+            let c = parseInt(document.getElementById('l-kids-cnt').value) || 1;
+            let h = ''; for(let i=1; i<=c; i++) h+=`<div class="flex items-center mt-2"><span class="text-sm font-bold text-gray-700 w-16">小孩 ${i}:</span><select class="l-kid-age q-input py-1.5 px-3 text-sm"><option value="" disabled selected hidden>年齡級距...</option><option value="0-6">0~6 歲</option><option value="7-12">7~12 歲</option><option value="13-18">13~18 歲</option><option value="18+">18歲以上</option></select></div>`;
+            document.getElementById('l-kids-ages').innerHTML = h;
+        }
+        function tLoan(t) {
+            const n = document.getElementById('l-ln-none'), o = ['l-ln-house','l-ln-car','l-ln-other'], b = document.getElementById('l-ln-amt-box');
+            if(t==='n' && n.checked) { o.forEach(id=>document.getElementById(id).checked=false); b.style.display='none'; document.getElementById('l-ln-amt').value=''; }
+            else if(t==='o') { n.checked=false; let a = o.some(id=>document.getElementById(id).checked); b.style.display = a?'flex':'none'; if(!a) document.getElementById('l-ln-amt').value=''; }
+        }
+        function tLifeCus() { document.getElementById('l-cus-amt').style.display = (document.getElementById('l-exist').value === 'custom') ? 'block' : 'none'; }
+
+        function validateLife1() { if(document.getElementById('l-dep-child').checked) { let s=document.querySelectorAll('.l-kid-age'); for(let el of s) if(!el.value){alert("⚠️ 每個小孩的年齡皆為必選！"); return false;} } return true; }
+        function validateLife2() { if(!document.getElementById('l-exp').value.trim() || !document.getElementById('l-sav').value.trim()) { alert("⚠️ 生活費與存款為必填！"); return false; } if(['l-ln-house','l-ln-car','l-ln-other'].some(id=>document.getElementById(id).checked) && !document.getElementById('l-ln-amt').value.trim()) { alert("⚠️ 您有勾選貸款，請填寫總餘額喔！"); return false; } return true; }
+        function validateLife3() { if(!document.getElementById('l-exist').value || !document.getElementById('l-anchor').value) { document.getElementById('validation-msg').style.display='block'; return false; } return true; }
+
+        function mQ1Check() { document.getElementById('m-q2-box').style.display = (document.getElementById('m-q1').value === '3') ? 'none' : 'block'; }
+        function validateMed1() { if(!document.getElementById('m-q1').value||(document.getElementById('m-q1').value!=='3'&&!document.getElementById('m-q2').value)||!document.getElementById('m-q3').value||!document.getElementById('m-q4').value){alert("⚠️ 醫療盤點尚未完成喔！"); return false;} return true;}
+        function validateMed2() { if(!document.getElementById('m-q5').value||!document.getElementById('m-q6').value||!document.getElementById('m-q7').value||!document.getElementById('m-q8').value){alert("⚠️ 壓力測試題尚未完成喔！"); return false;} return true;}
+
+        function validateRet1() { if(!document.getElementById('r-q1').value||!document.getElementById('r-q2').value||!document.getElementById('r-q3').value||!document.getElementById('r-q4').value){alert("⚠️ 目標設定題尚未完成喔！"); return false;} return true;}
+        function validateRet2() { if(!document.getElementById('r-q5').value||!document.getElementById('r-q7').value||!document.getElementById('r-q8').value){alert("⚠️ 資源盤點題尚未完成喔！"); return false;} return true;}
+
+        function calcLife() {
+            if(!mData.life) return;
+            const reg = document.getElementById('user-region').value;
+            const mExp = parseFloat(document.getElementById('l-exp').value)||0;
+            const lAmt = parseFloat(document.getElementById('l-ln-amt').value)||0;
+            const sAmt = parseFloat(document.getElementById('l-sav').value)||0;
+            let yrs = document.getElementById('l-dep-child').checked?20 : (document.getElementById('l-dep-spouse').checked||document.getElementById('l-dep-parent').checked?15:10);
+            const inf = (Math.pow(1.02, yrs)-1)/0.02;
+            const tLiv = Math.round(mExp*12*inf);
+            
+            let eCost=0;
+            if(document.getElementById('l-dep-child').checked) {
+                let base = reg==='海外'?(parseFloat(document.getElementById('custom-edu-cost').value)||0):getEduBase(reg);
+                document.querySelectorAll('.l-kid-age').forEach(sel=>{
+                    let m=1; if(sel.value==='7-12')m=0.7; if(sel.value==='13-18')m=0.4; if(sel.value==='18+')m=0; eCost+=Math.round(base*m);
+                });
+            }
+            let lSel=document.getElementById('l-exist').value;
+            let iAmt = lSel==='unsure'?0:(lSel==='custom'?(parseFloat(document.getElementById('l-cus-amt').value)||0):(lSel==='1500'?1500:parseInt(lSel)||0));
+            
+            let tNeed = tLiv+lAmt+eCost, tHave = sAmt+iAmt, gap = Math.max(0, tNeed-tHave);
+            // 反饋公式：家庭責任分數 = 100 × (已有保障 / 需求)，上限100
+            let lifeScore = tNeed===0 ? 100 : Math.min(100, Math.round(100 * tHave / tNeed));
+            let pctEmg = mExp===0 ? 100 : Math.min(100, Math.round((sAmt/(mExp*6))*100));
+            payload.life = { mExp, lAmt, sAmt, yrs, tLiv, eCost, iAmt, tNeed, tHave, gap, anchor:document.getElementById('l-anchor').value, pctEmg, lifeScore };
+
+            let gHtml = gap>0?`<span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-200">缺口 -${gap}萬</span>`:`<span class="text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded border border-green-200">無缺口</span>`;
+            repHTML.life = `
+            <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm mb-2 shadow-sm">
+                <div class="flex justify-between items-center mb-2"><span class="text-gray-600">總需求 <span class="text-xs">(生活+貸款+教育)</span></span><span class="font-bold text-gray-800">${tNeed}萬</span></div>
+                <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-2"><span class="text-gray-600">總資源 <span class="text-xs">(存款+現有保額)</span></span><span class="font-bold text-gray-800">${tHave}萬</span></div>
+                <div class="flex justify-between items-center"><span class="font-bold text-gray-800 text-base">真實資金缺口</span>${gHtml}</div>
+            </div>`;
+            
+            repHTML.pdfLife = `<div style="display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; padding:10px 15px; border-radius:10px; margin-bottom:10px;"><div style="text-align:center; width:35%;"><div style="font-size:48px; font-weight:bold; color:#1E293B; line-height:1;">${lifeScore}</div><div style="font-size:10px; color:#64748b; font-weight:bold; margin-top:2px;">家庭責任分數</div></div><div style="width:65%; height:120px; position:relative;"><canvas id="pdfRadarChart" style="max-height:120px!important;"></canvas></div></div><div style="background:#fef2f2; border:1px solid #fecaca; padding:8px 12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; font-size:10px; align-items:center;"><span>🎯總需求: <b>${tNeed}萬</b></span><span>➖ 🛡️總資源: <b>${tHave}萬</b></span><span>🟰 ⚠️缺口: <b style="color:#dc2626">${gap}萬</b></span></div>`;
+        }
+
+        function calcMed() {
+            if(!mData.med) return;
+            let q1=parseFloat(document.getElementById('m-q1').value); let q2=q1===3?2:parseFloat(document.getElementById('m-q2').value); let q3=parseFloat(document.getElementById('m-q3').value); let q4=parseFloat(document.getElementById('m-q4').value); let q5=parseFloat(document.getElementById('m-q5').value); let q6=parseFloat(document.getElementById('m-q6').value); let q7=parseFloat(document.getElementById('m-q7').value); let q8=parseFloat(document.getElementById('m-q8').value);
+            if(q6===1.1) q6=1; if(q7===2.1) q7=2;
+            let rawScore = Math.min(23, q1+q2+q3+q4+q5+q6+q7+q8);
+            // 反饋公式：醫療分數 = 100 - (總分 / 23 × 100)，越高越安全
+            let medScore = Math.max(0, Math.round(100 - (rawScore / 23 * 100)));
+            let score = rawScore; // 保留原始分用於等級判斷
+            let lvl = "", desc = "";
+            if(score<=6) { lvl = "✅ 防護相對完整"; desc = "基本保障已有一定基礎，說實話您觀念滿好的，只要定期檢視條款是否符合最新醫療技術即可。"; }
+            else if(score<=13) { lvl = "⚠️ 防護可能不足"; desc = "目前的保障可能有一些缺口，萬一遇到重疾，恐怕還是得動用到您辛苦存下的老本。"; }
+            else { lvl = "❌ 醫療風險偏高"; desc = "您目前的保障與經濟準備明顯不足，萬一發生重大疾病，可能會對家裡造成滿大的經濟壓力。"; }
+            
+            let precisionText = "";
+            if (q6 === 1 && q4 === 3) {
+                precisionText = `<div class="mt-3 pt-3 border-t border-red-200 text-xs text-red-700 text-left">💡 <b>顧問觀察：</b>從您的填答中，我發現您其實滿擔心生病會造成『收入中斷』的。但說實話，您目前的保障裡，正好少了最關鍵的『重大傷病』這塊拼圖，這就像出門怕下雨卻忘了帶傘一樣危險。</div>`;
+            } else if (q7 >= 2 && q1 === 0) {
+                precisionText = `<div class="mt-3 pt-3 border-t border-orange-200 text-xs text-orange-800 text-left">💡 <b>顧問觀察：</b>您雖然有買保險，但遇到 200 萬的自費卻還是需要動用大量存款。這代表您以前買的保單可能已經「不合時宜」了，沒辦法解決現在高昂的自費醫療。</div>`;
+            }
+
+            payload.med = { rawScore, score, medScore, lvl, q4, q6, q7 };
+
+            let bCol = score<=6?'bg-green-50 border-green-200 text-green-800' : (score<=13?'bg-orange-50 border-orange-200 text-orange-800' : 'bg-red-50 border-red-200 text-red-800');
+            repHTML.med = `<div class="p-5 border rounded-xl shadow-sm ${bCol} mb-2"><p class="text-xs font-bold mb-1 opacity-70 text-center">風險評估結果</p><div class="font-black text-xl mb-2 text-center">${lvl}</div><p class="text-sm font-bold opacity-90 text-left">${desc}</p>${precisionText}</div>`;
+            repHTML.pdfMed = `<div style="background:${score<=6?'#f0fdf4':(score<=13?'#fff7ed':'#fef2f2')}; border:1px solid ${score<=6?'#bbf7d0':(score<=13?'#fed7aa':'#fecaca')}; padding:10px; border-radius:6px; margin-bottom:10px; font-size:11px;"><b>風險評估：${lvl}</b><br><span style="color:#4b5563;">${desc}</span></div>`;
+        }
+
+        function calcRet() {
+            if(!mData.ret) return;
+            let retAge = parseFloat(document.getElementById('r-q1').value); if(retAge===65.1) retAge=65;
+            let curAge = parseFloat(document.getElementById('user-age').value) || 30;
+            let workYrs = Math.max(0, retAge - curAge); 
+            let retYrs = Math.max(5, 85 - retAge); 
+            let mCost=parseFloat(document.getElementById('r-q2').value);
+            let mSave=parseFloat(document.getElementById('r-q4').value)||0;
+            let curAcc=parseFloat(document.getElementById('r-q5').value)||0;
+            
+            let need = Math.round((mCost * 12 * retYrs)/10000); 
+            let estSave = Math.round(((mSave * 12 * workYrs) + curAcc)/10000); 
+            let gap = Math.max(0, need - estSave);
+            
+            let gPct = need===0?0: (gap/need)*100;
+            // 反饋公式：退休準備分數 = 100 × (1 - 缺口比例)
+            let retScore = Math.max(0, Math.round(100 * (1 - gPct / 100)));
+            let lvl = "";
+            if(gPct<=30) lvl="🟢 準備相對充足"; else if(gPct<=60) lvl="🟡 準備可能不足"; else lvl="🔴 準備明顯不足";
+
+            let mGapStr = "";
+            if (gap > 0 && workYrs > 0) { 
+                let monthlyNeeded = Math.round((gap*10000)/(12*workYrs));
+                mGapStr = `其實只要趁現在啟動，並搭配穩健的資產配置與時間複利，您每個月大約只要微調 <b class="text-red-600">${monthlyNeeded.toLocaleString()} 元</b> 的開銷，就能無痛達標！`; 
+            } else if (gap > 0 && workYrs === 0) { 
+                mGapStr = `既然已達退休年齡，建議您立刻重新檢視手邊的資產配置，讓死錢活起來。`; 
+            } else { 
+                mGapStr = `太棒了！只要繼續保持目前的準備進度，您一定能享受理想的退休生活。`; 
+            }
+
+            payload.ret = { retYrs, workYrs, mCost, need, estSave, gap, gPct, retScore, lvl };
+
+            repHTML.ret = `
+            <div class="bg-white border border-gray-200 rounded-xl p-4 text-sm mb-2 shadow-sm">
+                <div class="flex justify-between items-center mb-2"><span class="text-gray-600">總需求 (退休後活 ${retYrs} 年)</span><span class="font-bold text-gray-800">${need}萬</span></div>
+                <div class="flex justify-between items-center border-b border-gray-200 pb-2 mb-2"><span class="text-gray-600">預估準備 (未來 ${workYrs} 年儲蓄+現有)</span><span class="font-bold text-gray-800">${estSave}萬</span></div>
+                <div class="flex justify-between items-center mb-3"><span class="font-bold text-gray-800 text-base">資金缺口</span><span class="${gap>0?'text-red-600 bg-red-50 border border-red-200':'text-green-600 bg-green-50 border border-green-200'} font-bold px-2 py-0.5 rounded">${gap===0?'無缺口':'-'+gap+'萬'}</span></div>
+                <div class="text-xs bg-gray-50 p-3 rounded-lg text-gray-700 leading-relaxed"><span class="font-bold mb-1 block text-center">${lvl}</span><span class="block text-left">${mGapStr}</span></div>
+            </div>`;
+            
+            repHTML.pdfRet = `<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:10px;"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>🎯總需求(${retYrs}年): <b>${need}萬</b></span><span>🛡️預估準備(${workYrs}年): <b>${estSave}萬</b></span></div><div style="display:flex; justify-content:space-between; border-top:1px dashed #cbd5e1; padding-top:4px; margin-bottom:4px;"><span>⚠️資金缺口: <b style="color:#dc2626">${gap===0?'0':'-'+gap}萬</b></span></div><div style="background:#e2e8f0; padding:6px; border-radius:4px; color:#334155;"><b>${lvl}</b><br>${mGapStr.replace('class="text-red-600"','style="color:#dc2626"')}</div></div>`;
+        }
+
+        function buildRadarDimensions() {
+            let lifeScore = mData.life ? payload.life.lifeScore : null;
+            let medScore  = mData.med  ? payload.med.medScore   : null;
+            let retScore  = mData.ret  ? payload.ret.retScore   : null;
+
+            // 應急能力各分項
+            let medQ7Score = 0, anchorScore = 0, retQ4Score = 0;
+            if (mData.med) {
+                let q7 = payload.med.q7;
+                medQ7Score = q7===0 ? 100 : q7===1 ? 67 : q7===2 ? 33 : 0; // q7=3(完全沒準備)=0分
+            }
+            if (mData.life) {
+                let a = payload.life.anchor;
+                anchorScore = a==='可以撐很久' ? 100 : a==='5~10年' ? 75 : a==='3~5年' ? 50 : 25;
+            }
+            if (mData.ret) {
+                let mSave = parseFloat(document.getElementById('r-q4').value)||0;
+                retQ4Score = mSave>=40000 ? 100 : mSave>=20000 ? 75 : mSave>=6000 ? 50 : mSave>=2000 ? 25 : 0;
+            }
+
+            // 生活防護 = 醫療×40% + 壽險×30% + 退休×30%（依已完成模組正規化）
+            let lwt = (mData.med?0.4:0) + (mData.life?0.3:0) + (mData.ret?0.3:0);
+            let livScore = lwt>0 ? Math.round(((mData.med?medScore*0.4:0)+(mData.life?lifeScore*0.3:0)+(mData.ret?retScore*0.3:0))/lwt) : 0;
+
+            // 應急能力 = 醫療Q7×40% + 壽險可撐多久×40% + 退休Q4×20%
+            let ewt = (mData.med?0.4:0) + (mData.life?0.4:0) + (mData.ret?0.2:0);
+            let emgScore = ewt>0 ? Math.round(((mData.med?medQ7Score*0.4:0)+(mData.life?anchorScore*0.4:0)+(mData.ret?retQ4Score*0.2:0))/ewt) : 0;
+
+            let completedCount = (mData.med?1:0) + (mData.life?1:0) + (mData.ret?1:0);
+
+            // 問題3：三色分層
+            // ① 深色實線 = 已確認的單模組分數（不含複合維度）
+            // ② 琥珀虛線 = livScore/emgScore（估算，基於部分模組）
+            // ③ 灰色孤立點 = 尚未評估的模組
+            let confirmedData, estimatedData;
+            if(completedCount === 3) {
+                // 三模組全做：livScore/emgScore 都是真實值，全部納入深色實線
+                confirmedData = [livScore, medScore, lifeScore, retScore, emgScore];
+                estimatedData = null;
+            } else {
+                // 部分模組：複合維度為估算值，用琥珀色虛線獨立顯示
+                confirmedData = [null, mData.med?medScore:null, mData.life?lifeScore:null, mData.ret?retScore:null, null];
+                estimatedData = [livScore, null, null, null, emgScore];
+            }
+            let inactiveData = completedCount < 3
+                ? [null, mData.med?null:15, mData.life?null:15, mData.ret?null:15, null]
+                : null;
+
+            // 問題2：已做但極低分（≤20）的維度標記，用於結果頁警示
+            let danger = {
+                life: mData.life && lifeScore !== null && lifeScore <= 20,
+                med:  mData.med  && medScore  !== null && medScore  <= 20,
+                ret:  mData.ret  && retScore  !== null && retScore  <= 20,
+            };
+
+            return {
+                labels: ['生活防護','醫療防護','家庭責任','退休準備','應急能力'],
+                confirmedData,
+                estimatedData,
+                inactiveData,
+                hasInactive: completedCount < 3,
+                // 問題1：保留 null（模組未做），不用 ??0 填 0
+                lifeScore, medScore, retScore,
+                livScore, emgScore, completedCount, danger
+            };
+        }
+
+        function calculateAndSubmit() {
+            payload = { 
+                name: document.getElementById('user-name').value, age: document.getElementById('user-age').value, marriage: document.getElementById('user-marriage').value,
+                reg: document.getElementById('user-region').value, phone: document.getElementById('user-phone').value, line: document.getElementById('user-line').value, email: document.getElementById('user-email').value
+            };
+            calcLife(); calcMed(); calcRet();
+            
+            document.getElementById('ui-name').innerText = payload.name; document.getElementById('ui-age').innerText = payload.age; document.getElementById('ui-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('pdf-name').innerText = payload.name; document.getElementById('pdf-age').innerText = payload.age; document.getElementById('pdf-date').innerText = new Date().toLocaleDateString();
+
+            let lockHtml = (title, icon, module) => `
+                <div class="locked-module shadow-inner">
+                    <i class="${icon} locked-icon"></i>
+                    <div class="locked-title">🔒 ${title} 尚未評估</div>
+                    <div class="locked-text">此模組可能隱藏您尚未發現的風險缺口。<br>補做後，報告將自動更新此區塊。</div>
+                    <button onclick="quickUnlock('${module}')"
+                        class="mt-4 px-5 py-2.5 bg-[#1E293B] text-white text-sm font-bold rounded-xl hover:bg-[#C5A880] transition shadow-md w-full max-w-xs">
+                        ＋ 補做此模組，完善我的報告
+                    </button>
+                </div>`;
+            document.getElementById('res-life-content').innerHTML = mData.life ? repHTML.life : lockHtml('家庭責任', 'fas fa-lock', 'life');
+            document.getElementById('res-med-content').innerHTML = mData.med ? repHTML.med : lockHtml('醫療防護', 'fas fa-lock', 'med');
+            document.getElementById('res-ret-content').innerHTML = mData.ret ? repHTML.ret : lockHtml('樂活退休', 'fas fa-lock', 'ret');
+
+            let pBlocks = "";
+            let pLockHtml = (title) => `<div style="background:#f1f5f9; border:1px dashed #94a3b8; text-align:center; padding:15px; border-radius:6px; color:#475569; font-size:12px; margin-bottom:10px; font-weight:bold;">🔒 您本次未檢視【${title}】模組，建議向專屬顧問預約完整評估。</div>`;
+            pBlocks += `<div><h3 style="font-size:14px; color:#1E293B; border-left:4px solid #C5A880; padding-left:6px; margin:0 0 6px 0;">🛡️ 家庭責任防護</h3>${mData.life ? repHTML.pdfLife : pLockHtml('家庭責任')}</div>`;
+            pBlocks += `<div><h3 style="font-size:14px; color:#1E293B; border-left:4px solid #C5A880; padding-left:6px; margin:0 0 6px 0;">🏥 醫療與重疾防護</h3>${mData.med ? repHTML.pdfMed : pLockHtml('醫療防護')}</div>`;
+            pBlocks += `<div><h3 style="font-size:14px; color:#1E293B; border-left:4px solid #C5A880; padding-left:6px; margin:0 0 6px 0;">🏖️ 樂活退休精算</h3>${mData.ret ? repHTML.pdfRet : pLockHtml('樂活退休')}</div>`;
+            document.getElementById('pdf-content-blocks').innerHTML = pBlocks;
+
+            // ── 建立5維度雷達圖資料 ──
+            let dims = buildRadarDimensions();
+            radarDims = dims; // 供 downloadPDF 使用
+
+            // 將五維度分數加入 payload（Google Sheets 記錄用）
+            // 問題1：未做的模組記為 null，不填 0，避免與「最低分」混淆
+            payload.scores = {
+                lifeScore:  mData.life ? dims.lifeScore : null,
+                medScore:   mData.med  ? dims.medScore  : null,
+                retScore:   mData.ret  ? dims.retScore  : null,
+                livScore:   dims.livScore,
+                emgScore:   dims.emgScore,
+                avgScore:   0,
+                moduleDone: (mData.life?'壽':'')+(mData.med?'醫':'')+(mData.ret?'退':'')
+            };
+
+            // 整體風險等級（取各已完成維度的平均）
+            let allScores = [dims.livScore, dims.emgScore];
+            if (mData.life) allScores.push(dims.lifeScore);
+            if (mData.med)  allScores.push(dims.medScore);
+            if (mData.ret)  allScores.push(dims.retScore);
+            let avgScore = Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length);
+            payload.scores.avgScore = avgScore; // 補入整體平均分
+            let riskLevel = avgScore>=70 ? '🟢 風險偏低' : avgScore>=45 ? '🟡 中等風險' : '🔴 風險偏高';
+
+            // 一句話總結：依各維度高低動態生成
+            let goodAreas=[], badAreas=[];
+            if(mData.life)  (dims.lifeScore>=60?goodAreas:badAreas).push('家庭責任');
+            if(mData.med)   (dims.medScore>=60?goodAreas:badAreas).push('醫療防護');
+            if(mData.ret)   (dims.retScore>=60?goodAreas:badAreas).push('退休準備');
+            (dims.emgScore>=60?goodAreas:badAreas).push('應急能力');
+            (dims.livScore>=60?goodAreas:badAreas).push('生活防護');
+            let oneLiner = '';
+            if(goodAreas.length>0 && badAreas.length>0) {
+                oneLiner = `${goodAreas.join('與')}尚可，但${badAreas.join('與')}仍有缺口`;
+            } else if(goodAreas.length===0) {
+                oneLiner = '整體保障仍有較大缺口，建議全面檢視';
+            } else {
+                oneLiner = '整體財務防護準備相對充足，持續保持';
+            }
+
+            // 三個重點（依完成模組動態產生，低分強化語言）
+            let keyPoints = [];
+            if(mData.life) {
+                if(dims.danger.life) keyPoints.push(`<b>🚨 家庭責任（壽險）— 高風險</b><br>保障覆蓋率極低（${dims.lifeScore}分），與家庭需求差距 <b style="color:#dc2626">${payload.life.gap}萬</b>。萬一發生意外，家人的貸款、教育、生活費恐怕立即陷入困境，這是最需要優先補強的缺口。`);
+                else if(payload.life.gap>0) keyPoints.push(`<b>✔ 家庭責任（壽險）</b><br>目前保障與家庭需求仍有 <b style="color:#dc2626">${payload.life.gap}萬</b> 的缺口，若發生風險，家人可能面臨較大的經濟壓力。`);
+                else keyPoints.push(`<b>✔ 家庭責任（壽險）</b><br>目前保障已能涵蓋家庭需求，這部分準備得相當充足！`);
+            }
+            if(mData.med) {
+                if(dims.danger.med) keyPoints.push(`<b>🚨 醫療防護 — 高風險</b><br>醫療保障嚴重不足（${dims.medScore}分）。現今重大疾病自費動輒數十萬，一旦生病，不僅要耗費積蓄，還可能讓整個家庭計畫全面中斷。`);
+                else if(payload.med.score>6) keyPoints.push(`<b>✔ 醫療防護</b><br>醫療保障尚有缺口，遇到重大疾病時，仍可能需要動用存款，影響整體財務穩定。`);
+                else keyPoints.push(`<b>✔ 醫療防護</b><br>醫療保障具備基礎，持續確認條款是否涵蓋新型醫療技術即可。`);
+            }
+            if(mData.ret) {
+                if(dims.danger.ret) keyPoints.push(`<b>🚨 退休準備 — 高風險</b><br>退休準備嚴重不足（${dims.retScore}分），缺口高達 <b style="color:#dc2626">${payload.ret.gap}萬</b>。每晚一年開始，複利效應少一年，現在規劃的每一步都能大幅改變退休後的生活品質。`);
+                else if(payload.ret.gap>0) keyPoints.push(`<b>✔ 退休準備</b><br>退休資金仍有 <b style="color:#dc2626">${payload.ret.gap}萬</b> 缺口，需提早規劃並持續累積，還有 <b>${payload.ret.workYrs}年</b> 可以運用複利。`);
+                else keyPoints.push(`<b>✔ 退休準備</b><br>退休資金準備充足，只要維持目前進度，即可享受理想的退休生活！`);
+            }
+            // 補足至3個重點
+            if(keyPoints.length<3) {
+                if(dims.emgScore<60) keyPoints.push(`<b>✔ 應急能力</b><br>緊急備用金與短期保障能力仍有提升空間，建議檢視急用存款、醫療保障與壽險配置是否完整。`);
+                else keyPoints.push(`<b>✔ 應急能力</b><br>短期應急資金備置尚可，維持現況並定期檢視即可。`);
+            }
+
+            // 行動引導與諮詢 CTA（依風險程度與完成模組數調整）
+            let completedCount = (mData.life?1:0)+(mData.med?1:0)+(mData.ret?1:0);
+            let hasDanger = dims.danger.life || dims.danger.med || dims.danger.ret;
+            let actionGuide = completedCount===3
+                ? `如果希望讓整體保障更完整，可以一起檢視您的保單與財務配置，幫您把風險補齊，也讓未來更安心。`
+                : `目前只完成了 ${completedCount}/3 個模組評估，尚未評估的模組可能隱藏更大的風險缺口，建議向顧問預約完整診斷。`;
+
+            // 諮詢 CTA 區塊：高風險 or 低分 or 模組不完整時顯示
+            let needCta = hasDanger || avgScore < 60 || completedCount < 3;
+            let ctaUrgency = hasDanger ? 'urgent' : (avgScore < 45 ? 'high' : 'normal');
+            let ctaHtml = needCta ? `
+                <div class="mt-3 rounded-xl p-4 ${hasDanger ? 'bg-red-50 border border-red-300' : 'bg-amber-50 border border-amber-300'}">
+                    <p class="text-sm font-bold ${hasDanger ? 'text-red-700' : 'text-amber-800'} mb-1 text-center">
+                        ${hasDanger ? '🚨 您有高風險缺口，建議盡快諮詢顧問' : completedCount<3 ? '⚠️ 評估尚未完整，預約顧問一次搞定' : '💡 您的保障仍有優化空間'}
+                    </p>
+                    <p class="text-xs ${hasDanger ? 'text-red-600' : 'text-amber-700'} mb-3 leading-relaxed text-left">
+                        ${hasDanger ? '高風險的缺口每天都在累積潛在損失，及早補強比事後補救的成本低得多。' : completedCount<3 ? `還有 ${3-completedCount} 個模組未評估，預約後顧問可協助完成完整財務健診。` : '顧問可協助您找到最符合需求與預算的規劃方式。'}
+                    </p>
+                    <button onclick="document.getElementById('contact-modal').style.display='flex';"
+                        class="w-full py-2.5 rounded-lg font-bold text-sm text-white ${hasDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} transition shadow-sm">
+                        📅 立即預約專屬顧問諮詢
+                    </button>
+                </div>` : `
+                <div class="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 flex items-center justify-between">
+                    <p class="text-sm text-green-700 font-bold">✅ 整體準備狀況良好，建議每年定期複診</p>
+                    <button onclick="document.getElementById('contact-modal').style.display='flex';"
+                        class="ml-3 shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#1E293B] hover:bg-[#0F172A] transition">
+                        預約複診
+                    </button>
+                </div>`;
+
+            // 整體評估區塊 HTML
+            let summaryHtml = `
+            <div class="bg-[#F8FAFC] border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div class="mb-3">
+                    <p class="text-lg font-black text-[#1E293B] text-center">整體評估：${riskLevel}</p>
+                    <p class="text-sm text-gray-600 mt-1 text-left">你的整體財務防護屬於「${oneLiner}」</p>
+                </div>
+                <div class="border-t border-gray-200 pt-3 space-y-3 text-sm text-gray-700 text-left">
+                    ${keyPoints.slice(0,3).map(p=>`<div class="leading-relaxed">${p}</div>`).join('')}
+                </div>
+                <div class="border-t border-gray-200 mt-3 pt-3 text-sm text-gray-600 leading-relaxed text-left">
+                    <b class="text-[#1E293B]">⭐ 行動引導：</b>${actionGuide}
+                </div>
+                ${ctaHtml}
+            </div>`;
+            document.getElementById('res-overall-summary').innerHTML = summaryHtml;
+
+            // 更新結論區塊
+            let fTxt = summaryHtml;
+            document.getElementById('ui-conclusion-text').innerHTML = `<p class="text-sm text-gray-600 leading-relaxed">如需更精準的個人化規劃，請預約專屬顧問進行一對一解析。</p>`;
+            document.getElementById('pdf-conclusion-text').innerHTML = `整體評估：${riskLevel}。${oneLiner}。${actionGuide}`;
+
+            // ── 渲染5維度雷達圖（三色分層）──
+            setTimeout(() => {
+                const ctx = document.getElementById('uiRadarChart').getContext('2d');
+                if(uiChart) uiChart.destroy();
+
+                // ① 深色實線：已確認的分數
+                let datasets = [{
+                    data: dims.confirmedData,
+                    backgroundColor:'rgba(30,41,59,0.15)', borderColor:'#1E293B', borderWidth:2,
+                    pointBackgroundColor:'#1E293B', pointRadius:4, spanGaps:false
+                }];
+                // ② 琥珀虛線：估算的複合維度（未完成全部模組時）
+                if(dims.estimatedData) {
+                    datasets.push({
+                        data: dims.estimatedData,
+                        backgroundColor:'rgba(245,158,11,0.08)', borderColor:'#F59E0B', borderWidth:2,
+                        borderDash:[5,4],
+                        pointBackgroundColor:'#F59E0B', pointRadius:5, spanGaps:false
+                    });
+                }
+                // ③ 灰色孤立點：尚未評估的模組
+                if(dims.inactiveData) {
+                    datasets.push({
+                        data: dims.inactiveData,
+                        backgroundColor:'rgba(156,163,175,0.05)', borderColor:'#9CA3AF', borderWidth:1,
+                        pointBackgroundColor:'#9CA3AF', pointRadius:4, spanGaps:false
+                    });
+                }
+
+                // 圖例說明（問題3+4）
+                const noteEl = document.getElementById('radar-incomplete-note');
+                if(dims.completedCount < 3) {
+                    noteEl.innerHTML = `<span class="block">🔵 深色實線 = 已確認值</span><span class="block">🟠 橘色虛線 = 估算值（${dims.completedCount}/3 模組）</span><span class="block">⚫ 灰點 = 尚未評估</span><span class="block text-gray-400 mt-1">※ 應急能力 = 急用備援（醫療Q7）＋保障持久度（壽險）＋儲蓄紀律（退休提撥）的綜合指標</span>`;
+                } else {
+                    noteEl.innerHTML = `<span class="block text-gray-400">※ 應急能力 = 急用備援＋保障持久度＋儲蓄紀律的綜合指標</span>`;
+                }
+                noteEl.classList.remove('hidden');
+                uiChart = new Chart(ctx, {
+                    type:'radar',
+                    data:{ labels:dims.labels, datasets },
+                    options:{ responsive:true, maintainAspectRatio:false,
+                        scales:{ r:{ min:0, max:100, ticks:{display:false}, pointLabels:{font:{size:11, weight:'bold'}} } },
+                        plugins:{ legend:{display:false} } }
+                });
+            }, 100);
+
+            fetch(scriptURL, { 
+                method: 'POST', 
+                mode: 'no-cors', 
+                body: JSON.stringify(payload), 
+                headers: { "Content-Type": "text/plain;charset=utf-8" } 
+            }).then(() => {
+                console.log("背景資料傳送觸發成功");
+            }).catch(e => {
+                console.log("資料傳送發生異常", e);
+            });
+            
+            goToStep(flowArr.length - 1);
+        }
+
+        function downloadPDF(btn) {
+            btn.disabled = true;
+            document.getElementById('full-loading-overlay').style.display = 'flex';
+
+            setTimeout(() => {
+                try {
+                    const pdfCanvas = document.getElementById('pdfRadarChart');
+                    if(pdfCanvas && radarDims) {
+                        const ctx = pdfCanvas.getContext('2d');
+                        if(pdfChart) pdfChart.destroy();
+                        // PDF 版同樣三色分層
+                        let pdfDatasets = [{
+                            data: radarDims.confirmedData,
+                            backgroundColor:'rgba(30,41,59,0.15)', borderColor:'#1E293B', borderWidth:2,
+                            pointBackgroundColor:'#1E293B', pointRadius:3, spanGaps:false
+                        }];
+                        if(radarDims.estimatedData) {
+                            pdfDatasets.push({
+                                data: radarDims.estimatedData,
+                                backgroundColor:'rgba(245,158,11,0.08)', borderColor:'#F59E0B', borderWidth:1.5,
+                                borderDash:[4,3],
+                                pointBackgroundColor:'#F59E0B', pointRadius:3, spanGaps:false
+                            });
+                        }
+                        if(radarDims.inactiveData) {
+                            pdfDatasets.push({
+                                data: radarDims.inactiveData,
+                                backgroundColor:'rgba(156,163,175,0.05)', borderColor:'#9CA3AF', borderWidth:1,
+                                pointBackgroundColor:'#9CA3AF', pointRadius:3, spanGaps:false
+                            });
+                        }
+                        pdfChart = new Chart(ctx, {
+                            type:'radar',
+                            data:{ labels:radarDims.labels, datasets:pdfDatasets },
+                            options:{ responsive:true, maintainAspectRatio:false,
+                                scales:{r:{min:0, max:100, ticks:{display:false}, pointLabels:{font:{size:9}}}},
+                                plugins:{legend:{display:false}}, animation:false }
+                        });
+                    }
+                    
+                    setTimeout(() => {
+                        const el = document.getElementById('pdf-template');
+                        const opt = { 
+                            margin: 0, 
+                            filename: `全方位財務診斷_${payload.name}.pdf`, 
+                            image: { type: 'jpeg', quality: 0.98 }, 
+                            html2canvas: { scale: 2, useCORS: true, logging: false }, 
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+                        };
+
+                        html2pdf().set(opt).from(el).save().then(() => {
+                            document.getElementById('full-loading-overlay').style.display = 'none';
+                            btn.disabled = false;
+                        }).catch(err => {
+                            console.error(err);
+                            alert("產生報告時發生網路錯誤，請稍後再試。");
+                            document.getElementById('full-loading-overlay').style.display = 'none';
+                            btn.disabled = false;
+                        });
+                    }, 500);
+
+                } catch(e) {
+                    console.error(e);
+                    alert("畫面準備中發生錯誤，請截圖通知顧問。");
+                    document.getElementById('full-loading-overlay').style.display = 'none';
+                    btn.disabled = false;
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>
